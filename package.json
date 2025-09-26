@@ -1,0 +1,87 @@
+{
+  "name": "taiga-mcp-extension",
+  "displayName": "Taiga MCP Extension",
+  "description": "Integrate Taiga (self-hosted or cloud) with VS Code and MCP tools.",
+  "version": "0.1.0",
+  "publisher": "your-publisher",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "taiga",
+          "title": "Taiga",
+          "icon": "media/taiga-vscode-icon-glyph.svg"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Taiga",
+      "properties": {
+        "taiga.instances": {
+          "type": "array",
+            "description": "List of Taiga instances.",
+            "default": []
+        },
+        "taiga.activeInstanceName": {
+          "type": "string",
+          "default": "",
+          "description": "Name of the active Taiga instance from taiga.instances."
+        },
+        "taiga.maxPageSize": {
+          "type": "number",
+          "default": 50,
+          "minimum": 10,
+          "maximum": 200,
+          "description": "Default page size for listing user stories."
+        },
+        "taiga.enableVerboseLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose logging for diagnostics."
+        }
+      }
+    },
+    "commands": [
+      { "command": "taiga.selectInstance", "title": "Taiga: Select Instance" },
+      { "command": "taiga.connect", "title": "Taiga: Connect (Username/Password)" },
+      { "command": "taiga.setToken", "title": "Taiga: Set / Update Token" },
+      { "command": "taiga.selectProject", "title": "Taiga: Select Project" },
+      { "command": "taiga.refreshAll", "title": "Taiga: Refresh All" },
+      { "command": "taiga.showDiagnostics", "title": "Taiga: Show Diagnostics" }
+    ],
+    "views": {
+      "taiga": [
+        { "id": "taigaProjects", "name": "Projects", "icon": "$(project)" },
+        { "id": "taigaUserStories", "name": "User Stories", "icon": "$(list-selection)" },
+        { "id": "taigaIssues", "name": "Issues", "icon": "$(bug)" }
+      ]
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && node scripts/build.js",
+    "watch": "node scripts/build.js --watch",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'Tests TBD in later milestone'"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.0",
+    "@types/vscode": "^1.87.0"
+  },
+  "dependencies": {}
+}
