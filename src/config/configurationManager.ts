@@ -1,16 +1,8 @@
 import * as vscode from 'vscode';
 
-export interface InstanceConfig {
-  name: string;
-  baseUrl: string;
-  authType?: 'token';
-  tokenSecretId?: string; // optional, can derive
-  token?: string; // optional, insecure override from settings
-}
-
 export interface EffectiveConfig {
-  instances: InstanceConfig[];
-  activeInstanceName?: string;
+  baseUrl: string;
+  tokenSecretId: string;
   verbose: boolean;
   maxPageSize: number;
 }
@@ -21,11 +13,18 @@ export class ConfigurationManager {
 
   getEffective(): EffectiveConfig {
     const cfg = vscode.workspace.getConfiguration();
-  const instances = (cfg.get<any[]>('taiga.instances') || []).map((raw: any) => this.normalizeInstance(raw));
-    const activeInstanceName = cfg.get<string>('taiga.activeInstanceName') || undefined;
+    // New single-baseUrl setting
+    let baseUrl = this.normalizeBaseUrl(String(cfg.get<string>('taiga.baseUrl') || ''));
+    // Backward compatibility: if old instances exist, use the first as fallback
+    if (!baseUrl) {
+      const instances = (cfg.get<any[]>('taiga.instances') || []);
+      const activeName = cfg.get<string>('taiga.activeInstanceName') || instances[0]?.name;
+      const active = instances.find((i: any) => i.name === activeName) || instances[0];
+      if (active?.baseUrl) baseUrl = this.normalizeBaseUrl(String(active.baseUrl));
+    }
     return {
-      instances,
-      activeInstanceName,
+      baseUrl,
+      tokenSecretId: `taiga:default:token`,
       verbose: !!cfg.get<boolean>('taiga.enableVerboseLogging'),
       maxPageSize: cfg.get<number>('taiga.maxPageSize') || 50
     };
@@ -39,15 +38,7 @@ export class ConfigurationManager {
     }));
   }
 
-  private normalizeInstance(raw: any): InstanceConfig {
-    return {
-      name: String(raw.name || ''),
-      baseUrl: this.normalizeBaseUrl(String(raw.baseUrl || '')),
-      authType: 'token',
-      tokenSecretId: raw.tokenSecretId || `taiga:${raw.name}:token`,
-      token: raw.token ? String(raw.token) : undefined
-    };
-  }
+  // Old normalizeInstance not needed with single baseUrl; keep baseUrl helper below
 
   private normalizeBaseUrl(rawBaseUrl: string): string {
     let u = rawBaseUrl.trim().replace(/\/+$/, '');

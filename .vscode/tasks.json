@@ -1,39 +1,138 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "build:extension",
-      "type": "shell",
-      "command": "npm run build",
-      "problemMatcher": ["$tsc"],
-      "group": "build"
-    },
-    {
-      "label": "watch:extension",
-      "type": "shell",
-      "command": "node scripts/build.js --watch",
-      "isBackground": true,
-      "problemMatcher": [
-        {
-          "owner": "typescript",
-          "applyTo": "allDocuments",
-          "fileLocation": ["relative", "${workspaceFolder}"],
-          "pattern": {
-            "regexp": "^([^:(]+)\\((\\d+),(\\d+)\\): (error) (TS\\d+): (.*)$",
-            "file": 1,
-            "line": 2,
-            "column": 3,
-            "severity": 4,
-            "code": 5,
-            "message": 6
-          },
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".*Watching for changes...",
-            "endsPattern": ".*Rebuilt|Build complete"
-          }
-        }
-      ]
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build:extension",
+			"type": "shell",
+			"command": "npm run build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "watch:extension",
+			"type": "shell",
+			"command": "node scripts/build.js --watch",
+			"isBackground": true,
+			"problemMatcher": [
+				{
+					"owner": "typescript",
+					"applyTo": "allDocuments",
+					"fileLocation": [
+						"relative",
+						"${workspaceFolder}"
+					],
+					"pattern": {
+						"regexp": "^([^:(]+)\\((\\d+),(\\d+)\\): (error) (TS\\d+): (.*)$",
+						"file": 1,
+						"line": 2,
+						"column": 3,
+						"severity": 4,
+						"code": 5,
+						"message": 6
+					},
+					"background": {
+						"activeOnStart": true,
+						"beginsPattern": ".*Watching for changes...",
+						"endsPattern": ".*Rebuilt|Build complete"
+					}
+				}
+			]
+		},
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "npm run -s typecheck && npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "typecheck+build",
+			"type": "shell",
+			"command": "npm run -s typecheck && npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "final-typecheck-build",
+			"type": "shell",
+			"command": "npm run -s typecheck && npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "typecheck+build-again",
+			"type": "shell",
+			"command": "npm run -s typecheck && npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build-final-pass",
+			"type": "shell",
+			"command": "npm run -s typecheck && npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build-controls",
+			"type": "shell",
+			"command": "npm run -s typecheck && npm run -s build",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build taiga_mcp",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Typecheck taiga_mcp",
+			"type": "shell",
+			"command": "npm run typecheck",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build taiga_mcp",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Build taiga_mcp",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		}
+	]
 }

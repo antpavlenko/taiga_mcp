@@ -1,37 +1,67 @@
 {
   "name": "taiga-mcp-extension",
   "displayName": "Taiga MCP Extension",
-  "description": "Integrate Taiga (self-hosted or cloud) with VS Code and MCP tools.",
-  "version": "0.1.0",
-  "publisher": "your-publisher",
+  "description": "Integrate Taiga (self-hosted or cloud) with VS Code. Browse projects and manage Epics, User Stories, Tasks, and Issues with rich editors. MCP integration planned.",
+  "version": "1.0.0",
+  "publisher": "antpavlenko",
+  "author": "Anton Pavlenko",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antpavlenko/taiga_mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/antpavlenko/taiga_mcp/issues"
+  },
+  "homepage": "https://github.com/antpavlenko/taiga_mcp#readme",
   "engines": { "vscode": "^1.90.0" },
   "categories": ["Other"],
+  "keywords": [
+    "taiga",
+    "agile",
+    "project management",
+    "epics",
+    "user stories",
+    "tasks",
+    "issues",
+    "mcp",
+    "model context protocol"
+  ],
+  "galleryBanner": {
+    "color": "#0d1117",
+    "theme": "dark"
+  },
   "main": "./dist/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
+  "icon": "media/taiga-emblem-mono-black-256.png",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
           "id": "taiga",
           "title": "Taiga",
-          "icon": "media/taiga-vscode-icon-glyph.svg"
+          "icon": "media/taiga-emblem-dark.svg"
         }
+      ]
+    },
+    "views": {
+      "taiga": [
+  { "id": "taigaControls", "name": "Controls", "type": "webview", "icon": "$(gear)" },
+        { "id": "taigaEpics", "name": "Epics", "icon": "$(symbol-color)" },
+        { "id": "taigaSprints", "name": "Sprints", "icon": "$(history)" },
+        { "id": "taigaUserStories", "name": "User Stories", "icon": "$(list-selection)" },
+        { "id": "taigaIssues", "name": "Issues", "icon": "$(bug)" }
       ]
     },
     "configuration": {
       "title": "Taiga",
       "properties": {
-        "taiga.instances": {
-          "type": "array",
-            "description": "List of Taiga instances.",
-            "default": []
-        },
-        "taiga.activeInstanceName": {
+        "taiga.baseUrl": {
           "type": "string",
           "default": "",
-          "description": "Name of the active Taiga instance from taiga.instances."
+          "description": "Taiga server base URL (e.g., https://your-taiga.example). The extension will auto-append /api/v1 if missing."
         },
         "taiga.maxPageSize": {
           "type": "number",
@@ -48,20 +78,71 @@
       }
     },
     "commands": [
-      { "command": "taiga.selectInstance", "title": "Taiga: Select Instance" },
-      { "command": "taiga.connect", "title": "Taiga: Connect (Username/Password)" },
-      { "command": "taiga.setToken", "title": "Taiga: Set / Update Token" },
-      { "command": "taiga.selectProject", "title": "Taiga: Select Project" },
-      { "command": "taiga.refreshAll", "title": "Taiga: Refresh All" },
-      { "command": "taiga.showDiagnostics", "title": "Taiga: Show Diagnostics" }
+      { "command": "taiga.connect", "title": "Connect" },
+      { "command": "taiga.setToken", "title": "Set / Update Token" },
+      { "command": "taiga.selectProject", "title": "Select Project" },
+      { "command": "taiga.refreshAll", "title": "Refresh" },
+      { "command": "taiga.showDiagnostics", "title": "Show Diagnostics" },
+      { "command": "taiga.toggleEpicFilter", "title": "Toggle Epic Filter" },
+      { "command": "taiga.selectSprintFilter", "title": "Select Sprint" },
+      { "command": "taiga.toggleShowClosedIssues", "title": "Toggle Show Closed Issues" },
+  { "command": "taiga.createEpic", "title": "Create Epic…", "icon": "$(add)" },
+  { "command": "taiga.editEpic", "title": "Edit Epic…", "icon": "$(edit)" },
+      { "command": "taiga.deleteEpic", "title": "Delete Epic", "icon": "$(trash)" },
+      { "command": "taiga.addStoriesToEpic", "title": "Add Stories to Epic", "icon": "$(link)" },
+  { "command": "taiga.createSprint", "title": "Create Sprint…", "icon": "$(add)" },
+  { "command": "taiga.editSprint", "title": "Edit Sprint…", "icon": "$(edit)" },
+      { "command": "taiga.deleteSprint", "title": "Delete Sprint", "icon": "$(trash)" },
+  { "command": "taiga.createUserStory", "title": "Create User Story…", "icon": "$(add)" },
+  { "command": "taiga.editUserStory", "title": "Edit User Story…", "icon": "$(edit)" },
+      { "command": "taiga.deleteUserStory", "title": "Delete User Story", "icon": "$(trash)" },
+      { "command": "taiga.manageStoryTasks", "title": "Manage Tasks for Story", "icon": "$(tools)" },
+      { "command": "taiga.createTaskForStory", "title": "Create Task for Story", "icon": "$(add)" },
+      { "command": "taiga.createUserStoryForEpic", "title": "Create User Story for Epic", "icon": "$(add)" },
+  { "command": "taiga.createIssue", "title": "Create Issue…", "icon": "$(add)" },
+  { "command": "taiga.editIssue", "title": "Edit Issue…", "icon": "$(edit)" },
+      { "command": "taiga.deleteIssue", "title": "Delete Issue", "icon": "$(trash)" }
     ],
-    "views": {
-      "taiga": [
-        { "id": "taigaProjects", "name": "Projects", "icon": "$(project)" },
-        { "id": "taigaUserStories", "name": "User Stories", "icon": "$(list-selection)" },
-        { "id": "taigaIssues", "name": "Issues", "icon": "$(bug)" }
+    "menus": {
+      "view/title": [
+        { "command": "taiga.refreshAll", "when": "view =~ /taiga(?!Controls).+/", "group": "navigation@2", "icon": "$(refresh)" },
+        { "command": "taiga.createEpic", "when": "view == taigaEpics", "group": "navigation@99", "icon": "$(add)" },
+        { "command": "taiga.createSprint", "when": "view == taigaSprints", "group": "navigation@99", "icon": "$(add)" },
+        { "command": "taiga.createUserStory", "when": "view == taigaUserStories", "group": "navigation@99", "icon": "$(add)" },
+        { "command": "taiga.createIssue", "when": "view == taigaIssues", "group": "navigation@99", "icon": "$(add)" }
+      ],
+      "view/item/context": [
+        { "command": "taiga.createEpic", "when": "view == taigaEpics", "group": "navigation@1" },
+        { "command": "taiga.editEpic", "when": "view == taigaEpics && viewItem == epic", "group": "navigation@2" },
+        { "command": "taiga.deleteEpic", "when": "view == taigaEpics && viewItem == epic", "group": "navigation@3" },
+
+        { "command": "taiga.createSprint", "when": "view == taigaSprints && viewItem == backlog", "group": "navigation@1" },
+        { "command": "taiga.editSprint", "when": "view == taigaSprints && viewItem == sprint", "group": "navigation@2" },
+        { "command": "taiga.deleteSprint", "when": "view == taigaSprints && viewItem == sprint", "group": "navigation@3" },
+
+        { "command": "taiga.createUserStory", "when": "view == taigaUserStories", "group": "navigation@1" },
+        { "command": "taiga.editUserStory", "when": "view == taigaUserStories && viewItem == userStory", "group": "navigation@2" },
+        { "command": "taiga.deleteUserStory", "when": "view == taigaUserStories && viewItem == userStory", "group": "navigation@3" },
+
+        { "command": "taiga.createIssue", "when": "view == taigaIssues", "group": "navigation@1" },
+        { "command": "taiga.editIssue", "when": "view == taigaIssues && viewItem == issue", "group": "navigation@2" },
+        { "command": "taiga.deleteIssue", "when": "view == taigaIssues && viewItem == issue", "group": "navigation@3" }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "taigaEpics",
+        "contents": "Select a project to view epics."
+      },
+      {
+        "view": "taigaSprints",
+        "contents": "Select a project to view sprints."
+      },
+      {
+        "view": "taigaUserStories",
+        "contents": "Select a project to view user stories."
+      }
+    ]
   },
   "scripts": {
     "clean": "rimraf dist",

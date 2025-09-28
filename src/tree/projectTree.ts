@@ -7,6 +7,8 @@ export class ProjectTreeProvider implements vscode.TreeDataProvider<ProjectItem>
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private projects: Project[] = [];
   private loading = false;
+  private baseUrlSet = false;
+  private tokenPresent = false;
 
   constructor(private projectService: ProjectService) {}
 
@@ -14,6 +16,12 @@ export class ProjectTreeProvider implements vscode.TreeDataProvider<ProjectItem>
 
   getProjectCount(): number { return this.projects.length; }
   getProjects(): Project[] { return this.projects; }
+
+  setConnectionState(opts: { baseUrlSet: boolean; tokenPresent: boolean }) {
+    this.baseUrlSet = opts.baseUrlSet;
+    this.tokenPresent = opts.tokenPresent;
+    this._onDidChangeTreeData.fire();
+  }
 
   async load(): Promise<void> {
     if (this.loading) return;
@@ -33,9 +41,17 @@ export class ProjectTreeProvider implements vscode.TreeDataProvider<ProjectItem>
     if (this.loading && this.projects.length === 0) {
       return Promise.resolve([new ProjectItem('Loading...')]);
     }
-    if (!this.projects.length) {
-      return Promise.resolve([new ProjectItem('No projects (check token/instance)')]);
+    if (!this.baseUrlSet) {
+      const item = new ProjectItem('Set Taiga URL in Settings');
+      (item as any).command = { command: 'workbench.action.openSettings', title: 'Open Settings', arguments: ['taiga.baseUrl'] };
+      return Promise.resolve([item]);
     }
+    if (!this.tokenPresent) {
+      const item = new ProjectItem('Connect to Taiga…');
+      (item as any).command = { command: 'taiga.connect', title: 'Connect' };
+      return Promise.resolve([item]);
+    }
+    if (!this.projects.length) return Promise.resolve([new ProjectItem('No projects found')]);
     return Promise.resolve(this.projects.map(p => new ProjectItem(p.name || `Project ${p.id}`, p)));
   }
 }
