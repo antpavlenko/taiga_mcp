@@ -151,7 +151,8 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'Tests TBD in later milestone'"
+    "test": "echo 'Tests TBD in later milestone'",
+    "assets:all": "node scripts/generate-assets.js"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
@@ -162,7 +163,8 @@
     "prettier": "^3.2.5",
     "rimraf": "^5.0.5",
     "typescript": "^5.4.0",
-    "@types/vscode": "^1.87.0"
+    "@types/vscode": "^1.87.0",
+    "sharp": "^0.33.4"
   },
   "dependencies": {}
 }
