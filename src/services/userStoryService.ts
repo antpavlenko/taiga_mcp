@@ -17,7 +17,7 @@ export class UserStoryService {
     return [];
   }
 
-  async createUserStory(input: { projectId: ID; subject: string; description?: string; epicId?: ID; epicIds?: ID[]; milestoneId?: ID; statusId?: ID; assignedTo?: ID; tags?: string[]; isBlocked?: boolean; isPrivate?: boolean; teamRequirement?: boolean; clientRequirement?: boolean; dueDate?: string; points?: Record<string | number, number>; }): Promise<UserStory | undefined> {
+  async createUserStory(input: { projectId: ID; subject: string; description?: string; epicId?: ID; epicIds?: ID[]; milestoneId?: ID; statusId?: ID; assignedTo?: ID; tags?: string[]; isBlocked?: boolean; blockedReason?: string; isPrivate?: boolean; teamRequirement?: boolean; clientRequirement?: boolean; dueDate?: string; points?: Record<string | number, number>; }): Promise<UserStory | undefined> {
     const payload: any = { project: input.projectId, subject: input.subject };
     if (input.description !== undefined) payload.description = input.description;
     // Do not send epic/epics in payload; we'll link via related_userstories endpoint after creation
@@ -26,7 +26,8 @@ export class UserStoryService {
     if (input.assignedTo !== undefined) payload.assigned_to = input.assignedTo;
     if (input.tags !== undefined) payload.tags = input.tags;
     if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
-    if (input.isPrivate !== undefined) payload.is_private = input.isPrivate;
+  if (input.isPrivate !== undefined) payload.is_private = input.isPrivate;
+  if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
   if (input.teamRequirement !== undefined) payload.team_requirement = input.teamRequirement;
   if (input.clientRequirement !== undefined) payload.client_requirement = input.clientRequirement;
   if (input.dueDate !== undefined) payload.due_date = input.dueDate;
@@ -46,7 +47,7 @@ export class UserStoryService {
     return created as UserStory;
   }
 
-  async updateUserStory(id: ID, input: { subject?: string | null; description?: string | null; epicId?: ID | null; epicIds?: ID[]; milestoneId?: ID | null; statusId?: ID | null; assignedTo?: ID | null; tags?: string[]; isBlocked?: boolean | null; isPrivate?: boolean | null; teamRequirement?: boolean | null; clientRequirement?: boolean | null; dueDate?: string | null; points?: Record<string | number, number>; version?: number; }): Promise<UserStory | undefined> {
+  async updateUserStory(id: ID, input: { subject?: string | null; description?: string | null; epicId?: ID | null; epicIds?: ID[]; milestoneId?: ID | null; statusId?: ID | null; assignedTo?: ID | null; tags?: string[]; isBlocked?: boolean | null; blockedReason?: string | null; isPrivate?: boolean | null; teamRequirement?: boolean | null; clientRequirement?: boolean | null; dueDate?: string | null; points?: Record<string | number, number>; version?: number; }): Promise<UserStory | undefined> {
     const payload: any = {};
     if (input.subject !== undefined) payload.subject = input.subject;
     if (input.description !== undefined) payload.description = input.description;
@@ -56,7 +57,8 @@ export class UserStoryService {
     if (input.assignedTo !== undefined) payload.assigned_to = input.assignedTo;
     if (input.tags !== undefined) payload.tags = input.tags;
     if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
-    if (input.isPrivate !== undefined) payload.is_private = input.isPrivate;
+  if (input.isPrivate !== undefined) payload.is_private = input.isPrivate;
+  if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
   if (input.teamRequirement !== undefined) payload.team_requirement = input.teamRequirement;
   if (input.clientRequirement !== undefined) payload.client_requirement = input.clientRequirement;
   if (input.dueDate !== undefined) payload.due_date = input.dueDate;

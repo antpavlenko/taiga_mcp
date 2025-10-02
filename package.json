@@ -2,7 +2,7 @@
   "name": "taiga-mcp-extension",
   "displayName": "Taiga MCP Extension",
   "description": "Integrate Taiga (self-hosted or cloud) with VS Code. Browse projects and manage Epics, User Stories, Tasks, and Issues with rich editors. MCP integration planned.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "AntonPavlenko",
   "author": "Anton Pavlenko",
   "license": "MIT",

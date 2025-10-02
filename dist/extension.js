@@ -140,6 +140,8 @@ var init_taskService = __esm({
           payload.tags = input.tags;
         if (input.isBlocked !== void 0)
           payload.is_blocked = input.isBlocked;
+        if (input.blockedReason !== void 0)
+          payload.blocked_note = input.blockedReason;
         const { data, error } = await this.api.post("/tasks", payload);
         if (error)
           return void 0;
@@ -163,6 +165,8 @@ var init_taskService = __esm({
           payload.tags = input.tags;
         if (input.isBlocked !== void 0)
           payload.is_blocked = input.isBlocked;
+        if (input.blockedReason !== void 0)
+          payload.blocked_note = input.blockedReason;
         if (input.version !== void 0)
           payload.version = input.version;
         const { data, error } = await this.api.patch(`/tasks/${id}`, payload);
@@ -321,6 +325,7 @@ function renderHtml(csp, nonce, opts) {
   const statuses = Array.from(new Map((opts.statuses || []).map((s) => [String(s.id), s])).values());
   const statusOptions = ['<option value="">(none)</option>', ...statuses.map((s) => `<option value="${s.id}" ${String(statusId) === String(s.id) ? "selected" : ""}>${escapeHtml2(s.name)}</option>`)].join("");
   const isBlocked = !!story?.is_blocked || !!story?.blocked;
+  const blockedReason = story?.blocked_note || story?.blocked_reason || "";
   const storyRef = story?.ref || story?.id;
   const linkedTasks = Array.isArray(opts.linkedTasks) ? opts.linkedTasks : [];
   const taskStatuses = Array.isArray(opts.taskStatuses) ? opts.taskStatuses : [];
@@ -374,10 +379,11 @@ function renderHtml(csp, nonce, opts) {
   <div class="row"><label>Status</label><select id="status">${statusOptions}</select></div>
   <div class="row"><label>Due date</label><input id="dueDate" type="date" value="${escapeHtml2((story?.due_date || "").toString().slice(0, 10))}" /></div>
     <div class="row"><label>Flags</label>
-      <div class="flags" style="display:flex; gap:8px;">
+      <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
         <button id="teamReq" title="Team requirement">\u{1F465}</button>
         <button id="clientReq" title="Client requirement">\u{1F464}</button>
         <button id="blocked" title="Blocked">\u26D4</button>
+        <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml2(String(blockedReason || ""))}" />
       </div>
     </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml2(tags.join(", "))}" /></div>
@@ -539,6 +545,7 @@ function renderHtml(csp, nonce, opts) {
     const teamBtn = document.getElementById('teamReq');
     const clientBtn = document.getElementById('clientReq');
   const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
   function renderFlag(btn, active){ btn.style.opacity = active ? '1' : '0.5'; }
     let teamRequirement = ${story?.team_requirement ? "true" : "false"};
     let clientRequirement = ${story?.client_requirement ? "true" : "false"};
@@ -677,7 +684,8 @@ function renderHtml(csp, nonce, opts) {
       tags: (document.getElementById('tags')).value.split(',').map(s=>s.replace(/,+$/, '').trim()).filter(s=>s.length>0),
       team_requirement: teamRequirement,
       client_requirement: clientRequirement,
-      is_blocked: _isBlocked,
+  is_blocked: _isBlocked,
+  blocked_reason: blockedReasonInput ? (blockedReasonInput).value : '',
       due_date: (document.getElementById('dueDate')).value,
       points: pts
     }});
@@ -733,7 +741,7 @@ var init_storyEditor = __esm({
     StoryEditor = class {
       static async openForCreate(storyService, epicService, sprintService, projectId, preselectedEpicIds, siteBaseUrl, projectSlug) {
         const panel = vscode10.window.createWebviewPanel("taigaStoryEditor", "New User Story", vscode10.ViewColumn.Active, { enableScripts: true });
-        const ext = vscode10.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+        const ext = vscode10.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode10.extensions.getExtension("antpavlenko.taiga-mcp-extension");
         if (ext)
           panel.iconPath = {
             light: vscode10.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -788,7 +796,7 @@ var init_storyEditor = __esm({
       }
       static async openForEdit(storyService, epicService, sprintService, story, siteBaseUrl, projectSlug) {
         const panel = vscode10.window.createWebviewPanel("taigaStoryEditor", `Edit Story: ${story.subject || story.id}`, vscode10.ViewColumn.Active, { enableScripts: true });
-        const ext2 = vscode10.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+        const ext2 = vscode10.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode10.extensions.getExtension("antpavlenko.taiga-mcp-extension");
         if (ext2)
           panel.iconPath = {
             light: vscode10.Uri.joinPath(ext2.extensionUri, "media/taiga-emblem-light.svg"),
@@ -950,6 +958,7 @@ function renderHtml4(csp, nonce, opts) {
   const statusId = t?.status?.id ?? t?.status ?? t?.statusId;
   const dueDate = (t?.due_date || "").toString().slice(0, 10);
   const isBlocked = !!(t?.is_blocked || t?.blocked);
+  const blockedReason = t?.blocked_note || t?.blocked_reason || "";
   const tags = Array.isArray(t?.tags) ? (t?.tags || []).map((x) => String(x ?? "").replace(/,+$/, "").trim()).filter((s) => s.length > 0) : [];
   const users = opts.users || [];
   const statuses = opts.statuses || [];
@@ -981,8 +990,9 @@ function renderHtml4(csp, nonce, opts) {
   <div class="row"><label>Description</label><textarea id="desc" rows="6">${escapeHtml5(description)}</textarea></div>
   <div class="row"><label>Status</label><select id="status">${statusOptions}</select></div>
   <div class="row"><label>Flags</label>
-    <div class="flags" style="display:flex; gap:8px;">
+    <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
       <button id="blocked" title="Blocked">\u26D4</button>
+      <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml5(String(blockedReason || ""))}" />
     </div>
   </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml5(tags.join(", "))}" /></div>
@@ -1009,6 +1019,7 @@ function renderHtml4(csp, nonce, opts) {
   <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
   let _isBlocked = ${isBlocked ? "true" : "false"};
   function renderFlag(btn, active){ btn.style.opacity = active ? '1' : '0.5'; }
   if (blockedBtn) { renderFlag(blockedBtn, _isBlocked); blockedBtn.addEventListener('click', ()=>{ _isBlocked = !_isBlocked; renderFlag(blockedBtn, _isBlocked); }); }
@@ -1021,7 +1032,8 @@ function renderHtml4(csp, nonce, opts) {
       assignedTo: parseNullableInt((document.getElementById('assigned')).value),
       due_date: (document.getElementById('dueDate')).value,
       tags: (document.getElementById('tags')).value.split(',').map(s=>s.replace(/,+$/, '').trim()).filter(s=>s.length>0),
-      is_blocked: _isBlocked
+      is_blocked: _isBlocked,
+      blocked_reason: blockedReasonInput ? (blockedReasonInput).value : ''
     }});
   });
   const cancelBtn = document.getElementById('cancel'); if (cancelBtn) cancelBtn.addEventListener('click', ()=>vscode.postMessage({ type: 'cancel' }));
@@ -1074,7 +1086,7 @@ var init_taskEditor = __esm({
     TaskEditor = class {
       static async openForCreate(taskService, projectId, userStoryId, siteBaseUrl, projectSlug) {
         const panel = vscode13.window.createWebviewPanel("taigaTaskEditor", "New Task", vscode13.ViewColumn.Active, { enableScripts: true });
-        const ext = vscode13.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+        const ext = vscode13.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode13.extensions.getExtension("antpavlenko.taiga-mcp-extension");
         if (ext)
           panel.iconPath = {
             light: vscode13.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -1101,8 +1113,8 @@ var init_taskEditor = __esm({
         panel.webview.html = renderHtml4(csp, nonce, { mode: "create", users, statuses, siteBaseUrl, projectSlug, projectId, userStoryId });
         panel.webview.onDidReceiveMessage(async (msg) => {
           if (msg.type === "save") {
-            const { subject, description, statusId, assignedTo, due_date, tags, is_blocked } = msg.payload || {};
-            const created = await taskService.createTask({ projectId, userStoryId, subject, description, statusId, assignedTo, dueDate: due_date, tags, isBlocked: is_blocked });
+            const { subject, description, statusId, assignedTo, due_date, tags, is_blocked, blocked_reason } = msg.payload || {};
+            const created = await taskService.createTask({ projectId, userStoryId, subject, description, statusId, assignedTo, dueDate: due_date, tags, isBlocked: is_blocked, blockedReason: blocked_reason });
             if (created) {
               vscode13.window.showInformationMessage("Task created");
               panel.dispose();
@@ -1117,7 +1129,7 @@ var init_taskEditor = __esm({
       }
       static async openForEdit(taskService, task, siteBaseUrl, projectSlug) {
         const panel = vscode13.window.createWebviewPanel("taigaTaskEditor", `Edit Task: ${task.subject || task.id}`, vscode13.ViewColumn.Active, { enableScripts: true });
-        const ext = vscode13.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+        const ext = vscode13.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode13.extensions.getExtension("antpavlenko.taiga-mcp-extension");
         if (ext)
           panel.iconPath = {
             light: vscode13.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -1152,8 +1164,8 @@ var init_taskEditor = __esm({
         panel.webview.html = renderHtml4(csp, nonce, { mode: "edit", task: full, users, statuses, siteBaseUrl, projectSlug, projectId: Number(pid || 0), userStoryId: Number(full.user_story || full.userStoryId || 0) });
         panel.webview.onDidReceiveMessage(async (msg) => {
           if (msg.type === "save") {
-            const { subject, description, statusId, assignedTo, due_date, tags, is_blocked } = msg.payload || {};
-            const updated = await taskService.updateTask(task.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? void 0, isBlocked: is_blocked ?? null, version: full?.version });
+            const { subject, description, statusId, assignedTo, due_date, tags, is_blocked, blocked_reason } = msg.payload || {};
+            const updated = await taskService.updateTask(task.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? void 0, isBlocked: is_blocked ?? null, blockedReason: blocked_reason ?? null, version: full?.version });
             if (updated) {
               vscode13.window.showInformationMessage("Task updated");
               panel.dispose();
@@ -1207,11 +1219,16 @@ function renderHtml5(csp, nonce, opts) {
   const typeId = (t?.type && (t?.type.id ?? t?.type)) ?? t?.type;
   const severityId = (t?.severity && (t?.severity.id ?? t?.severity)) ?? t?.severity;
   const priorityId = (t?.priority && (t?.priority.id ?? t?.priority)) ?? t?.priority;
+  const sprintId = (t?.milestone && (t?.milestone.id ?? t?.milestone)) ?? t?.milestone ?? t?.milestoneId;
+  const isBlocked = !!(t?.is_blocked || t?.blocked);
+  const blockedReason = t?.blocked_note || t?.blocked_reason || "";
   const userOptions = ['<option value="">Unassigned</option>', ...users.map((u) => `<option value="${u.id}" ${String(assignedId) === String(u.id) ? "selected" : ""}>${escapeHtml6(u.fullName || u.username)}</option>`)].join("");
   const statusOptions = ['<option value="">(none)</option>', ...statuses.map((s) => `<option value="${s.id}" ${String(statusId) === String(s.id) ? "selected" : ""}>${escapeHtml6(s.name)}</option>`)].join("");
   const typeOptions = ['<option value="">(none)</option>', ...types.map((s) => `<option value="${s.id}" ${String(typeId) === String(s.id) ? "selected" : ""}>${escapeHtml6(s.name)}</option>`)].join("");
   const severityOptions = ['<option value="">(none)</option>', ...severities.map((s) => `<option value="${s.id}" ${String(severityId) === String(s.id) ? "selected" : ""}>${escapeHtml6(s.name)}</option>`)].join("");
   const priorityOptions = ['<option value="">(none)</option>', ...priorities.map((s) => `<option value="${s.id}" ${String(priorityId) === String(s.id) ? "selected" : ""}>${escapeHtml6(s.name)}</option>`)].join("");
+  const sprints = opts.sprints || [];
+  const sprintOptions = ['<option value="">(none)</option>', ...sprints.map((s) => `<option value="${s.id}" ${String(sprintId) === String(s.id) ? "selected" : ""}>${escapeHtml6(s.name || String(s.id))}</option>`)].join("");
   const ref = t?.ref || t?.id;
   return `<!DOCTYPE html>
   <html><head><meta charset="UTF-8" />
@@ -1240,6 +1257,13 @@ function renderHtml5(csp, nonce, opts) {
   <div class="row"><label>Type</label><select id="type">${typeOptions}</select></div>
   <div class="row"><label>Severity</label><select id="severity">${severityOptions}</select></div>
   <div class="row"><label>Priority</label><select id="priority">${priorityOptions}</select></div>
+  <div class="row"><label>Sprint</label><select id="sprint">${sprintOptions}</select></div>
+  <div class="row"><label>Flags</label>
+    <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
+      <button id="blocked" title="Blocked">\u26D4</button>
+      <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml6(String(blockedReason || ""))}" />
+    </div>
+  </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml6(tags.join(", "))}" /></div>
   <div class="row"><label>Due date</label><input id="dueDate" type="date" value="${escapeHtml6(dueDate)}" /></div>
   ${(() => {
@@ -1263,6 +1287,11 @@ function renderHtml5(csp, nonce, opts) {
   </div>
   <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
+  const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
+  let _isBlocked = ${isBlocked ? "true" : "false"};
+  function renderFlag(btn, active){ btn.style.opacity = active ? '1' : '0.5'; }
+  if (blockedBtn) { renderFlag(blockedBtn, _isBlocked); blockedBtn.addEventListener('click', ()=>{ _isBlocked = !_isBlocked; renderFlag(blockedBtn, _isBlocked); }); }
   const saveBtn = document.getElementById('save');
   if (saveBtn) saveBtn.addEventListener('click', () => {
     vscode.postMessage({ type: 'save', payload: {
@@ -1273,6 +1302,9 @@ function renderHtml5(csp, nonce, opts) {
   severityId: parseNullableInt((document.getElementById('severity')).value),
   priorityId: parseNullableInt((document.getElementById('priority')).value),
       assignedTo: parseNullableInt((document.getElementById('assigned')).value),
+      sprintId: parseNullableInt((document.getElementById('sprint')).value),
+      is_blocked: _isBlocked,
+      blocked_reason: blockedReasonInput ? (blockedReasonInput).value : '',
       due_date: (document.getElementById('dueDate')).value,
       tags: (document.getElementById('tags')).value.split(',').map(s=>s.replace(/,+$/, '').trim()).filter(s=>s.length>0)
     }});
@@ -1311,7 +1343,7 @@ var init_issueEditor = __esm({
     IssueEditor = class {
       static async openForCreate(issueService, projectId, siteBaseUrl, projectSlug) {
         const panel = vscode14.window.createWebviewPanel("taigaIssueEditor", "New Issue", vscode14.ViewColumn.Active, { enableScripts: true });
-        const ext = vscode14.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+        const ext = vscode14.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode14.extensions.getExtension("antpavlenko.taiga-mcp-extension");
         if (ext)
           panel.iconPath = {
             light: vscode14.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -1356,11 +1388,20 @@ var init_issueEditor = __esm({
             return [];
           }
         })();
-        panel.webview.html = renderHtml5(csp, nonce, { mode: "create", users, statuses, siteBaseUrl, projectSlug, types, severities, priorities });
+        const { SprintService: SprintService2 } = await Promise.resolve().then(() => (init_sprintService(), sprintService_exports));
+        const sprintService = new SprintService2(issueService["api"]);
+        const sprints = await (async () => {
+          try {
+            return await sprintService.listSprints(projectId);
+          } catch {
+            return [];
+          }
+        })();
+        panel.webview.html = renderHtml5(csp, nonce, { mode: "create", users, statuses, siteBaseUrl, projectSlug, types, severities, priorities, sprints });
         panel.webview.onDidReceiveMessage(async (msg) => {
           if (msg.type === "save") {
-            const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId } = msg.payload || {};
-            const res = await issueService.createIssue({ projectId, subject, description, statusId, assignedTo, dueDate: due_date, tags, typeId, severityId, priorityId });
+            const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId, sprintId, is_blocked, blocked_reason } = msg.payload || {};
+            const res = await issueService.createIssue({ projectId, subject, description, statusId, assignedTo, dueDate: due_date, tags, typeId, severityId, priorityId, milestoneId: sprintId, isBlocked: is_blocked, blockedReason: blocked_reason });
             if (!res) {
               await handleTokenError4(issueService, "Creating issue failed");
               return;
@@ -1375,7 +1416,7 @@ var init_issueEditor = __esm({
       }
       static async openForEdit(issueService, issue, siteBaseUrl, projectSlug) {
         const panel = vscode14.window.createWebviewPanel("taigaIssueEditor", `Edit Issue: ${issue.subject || issue.id}`, vscode14.ViewColumn.Active, { enableScripts: true });
-        const ext = vscode14.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+        const ext = vscode14.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode14.extensions.getExtension("antpavlenko.taiga-mcp-extension");
         if (ext)
           panel.iconPath = {
             light: vscode14.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -1428,11 +1469,21 @@ var init_issueEditor = __esm({
             return issue;
           }
         })();
-        panel.webview.html = renderHtml5(csp, nonce, { mode: "edit", issue: full, users, statuses, types, severities, priorities, siteBaseUrl, projectSlug });
+        const { SprintService: SprintService2 } = await Promise.resolve().then(() => (init_sprintService(), sprintService_exports));
+        const sprintService = new SprintService2(issueService["api"]);
+        const pidNum = Number(issue.projectId ?? issue.project ?? 0);
+        const sprints = await (async () => {
+          try {
+            return pidNum ? await sprintService.listSprints(pidNum) : [];
+          } catch {
+            return [];
+          }
+        })();
+        panel.webview.html = renderHtml5(csp, nonce, { mode: "edit", issue: full, users, statuses, types, severities, priorities, siteBaseUrl, projectSlug, sprints });
         panel.webview.onDidReceiveMessage(async (msg) => {
           if (msg.type === "save") {
-            const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId } = msg.payload || {};
-            const res = await issueService.updateIssue(issue.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? void 0, typeId: typeId ?? null, severityId: severityId ?? null, priorityId: priorityId ?? null, version: full?.version });
+            const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId, sprintId, is_blocked, blocked_reason } = msg.payload || {};
+            const res = await issueService.updateIssue(issue.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? void 0, typeId: typeId ?? null, severityId: severityId ?? null, priorityId: priorityId ?? null, milestoneId: sprintId ?? null, isBlocked: is_blocked ?? null, blockedReason: blocked_reason ?? null, version: full?.version });
             if (!res) {
               await handleTokenError4(issueService, "Updating issue failed");
               return;
@@ -1735,6 +1786,8 @@ var UserStoryService = class {
       payload.is_blocked = input.isBlocked;
     if (input.isPrivate !== void 0)
       payload.is_private = input.isPrivate;
+    if (input.blockedReason !== void 0)
+      payload.blocked_note = input.blockedReason;
     if (input.teamRequirement !== void 0)
       payload.team_requirement = input.teamRequirement;
     if (input.clientRequirement !== void 0)
@@ -1774,6 +1827,8 @@ var UserStoryService = class {
       payload.is_blocked = input.isBlocked;
     if (input.isPrivate !== void 0)
       payload.is_private = input.isPrivate;
+    if (input.blockedReason !== void 0)
+      payload.blocked_note = input.blockedReason;
     if (input.teamRequirement !== void 0)
       payload.team_requirement = input.teamRequirement;
     if (input.clientRequirement !== void 0)
@@ -1928,10 +1983,15 @@ var IssueService = class {
   constructor(api) {
     this.api = api;
   }
-  async listIssues(projectId, includeClosed) {
+  async listIssues(projectId, includeClosed, milestoneId) {
     const query = { project: projectId };
     if (!includeClosed) {
       query["status__is_closed"] = false;
+    }
+    if (milestoneId === null) {
+      query["milestone__isnull"] = true;
+    } else if (typeof milestoneId === "number") {
+      query["milestone"] = milestoneId;
     }
     const { data, error } = await this.api.get("/issues", { query });
     if (error || data == null)
@@ -1960,6 +2020,12 @@ var IssueService = class {
       payload.severity = input.severityId;
     if (input.priorityId !== void 0)
       payload.priority = input.priorityId;
+    if (input.milestoneId !== void 0)
+      payload.milestone = input.milestoneId;
+    if (input.isBlocked !== void 0)
+      payload.is_blocked = input.isBlocked;
+    if (input.blockedReason !== void 0)
+      payload.blocked_note = input.blockedReason;
     const { data, error } = await this.api.post("/issues", payload);
     if (error)
       return void 0;
@@ -1985,6 +2051,12 @@ var IssueService = class {
       payload.severity = input.severityId;
     if (input.priorityId !== void 0)
       payload.priority = input.priorityId;
+    if (input.milestoneId !== void 0)
+      payload.milestone = input.milestoneId;
+    if (input.isBlocked !== void 0)
+      payload.is_blocked = input.isBlocked;
+    if (input.blockedReason !== void 0)
+      payload.blocked_note = input.blockedReason;
     if (input.version !== void 0)
       payload.version = input.version;
     const { data, error } = await this.api.patch(`/issues/${id}`, payload);
@@ -2227,6 +2299,7 @@ var UserStoryItem = class extends vscode4.TreeItem {
 // src/tree/issuesTree.ts
 var vscode5 = __toESM(require("vscode"));
 var IssuesTreeProvider = class {
+  // undefined=no filter, null=Backlog, number=sprint
   constructor(issueService) {
     this.issueService = issueService;
     this._onDidChangeTreeData = new vscode5.EventEmitter();
@@ -2237,6 +2310,7 @@ var IssuesTreeProvider = class {
     this.tokenPresent = false;
     this.includeClosed = false;
     this.selectedEpicIds = [];
+    this.selectedSprintId = void 0;
   }
   setActiveProject(id) {
     this.activeProjectId = id;
@@ -2256,7 +2330,9 @@ var IssuesTreeProvider = class {
   getEpicFilter() {
     return this.selectedEpicIds;
   }
-  setSprintFilter(_id) {
+  setSprintFilter(id) {
+    this.selectedSprintId = id;
+    this.refresh();
   }
   refresh() {
     this.load();
@@ -2273,17 +2349,7 @@ var IssuesTreeProvider = class {
     this._onDidChangeTreeData.fire();
     try {
       if (this.activeProjectId) {
-        this.issues = await this.issueService.listIssues(this.activeProjectId, this.includeClosed);
-        if (this.selectedEpicIds?.length) {
-          const set = new Set(this.selectedEpicIds.map((x) => String(x)));
-          this.issues = this.issues.filter((i) => {
-            const single = i?.epicId ?? i?.epic;
-            if (single != null && set.has(String(single)))
-              return true;
-            const arr = Array.isArray(i?.epics) ? i.epics : [];
-            return arr.some((e) => set.has(String(e)) || set.has(String(e?.id ?? e)));
-          });
-        }
+        this.issues = await this.issueService.listIssues(this.activeProjectId, this.includeClosed, this.selectedSprintId);
       } else {
         this.issues = [];
       }
@@ -2642,6 +2708,8 @@ var EpicService = class {
       payload.client_requirement = input.clientRequirement;
     if (input.isBlocked !== void 0)
       payload.is_blocked = input.isBlocked;
+    if (input.blockedReason !== void 0)
+      payload.blocked_note = input.blockedReason;
     if (input.statusId !== void 0)
       payload.status = input.statusId;
     if (input.tags !== void 0)
@@ -2667,6 +2735,8 @@ var EpicService = class {
       payload.client_requirement = input.clientRequirement;
     if (input.isBlocked !== void 0)
       payload.is_blocked = input.isBlocked;
+    if (input.blockedReason !== void 0)
+      payload.blocked_note = input.blockedReason;
     if (input.statusId !== void 0)
       payload.status = input.statusId;
     if (input.tags !== void 0)
@@ -2855,7 +2925,7 @@ var vscode11 = __toESM(require("vscode"));
 var EpicEditor = class {
   static async openForCreate(epicService, projectId, users, statuses, siteBaseUrl, projectSlug) {
     const panel = vscode11.window.createWebviewPanel("taigaEpicEditor", "New Epic", vscode11.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode11.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+    const ext = vscode11.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode11.extensions.getExtension("antpavlenko.taiga-mcp-extension");
     if (ext)
       panel.iconPath = {
         light: vscode11.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -2884,7 +2954,7 @@ var EpicEditor = class {
   }
   static async openForEdit(epicService, epic, users, statuses, storyService, siteBaseUrl, projectSlug) {
     const panel = vscode11.window.createWebviewPanel("taigaEpicEditor", `Edit Epic: ${epic.title || epic.subject || epic.id}`, vscode11.ViewColumn.Active, { enableScripts: true });
-    const ext2 = vscode11.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+    const ext2 = vscode11.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode11.extensions.getExtension("antpavlenko.taiga-mcp-extension");
     if (ext2)
       panel.iconPath = {
         light: vscode11.Uri.joinPath(ext2.extensionUri, "media/taiga-emblem-light.svg"),
@@ -3015,6 +3085,7 @@ function renderHtml2(csp, nonce, opts) {
   const teamReq = !!epic?.team_requirement;
   const clientReq = !!epic?.client_requirement;
   const blocked = !!epic?.is_blocked || !!epic?.blocked;
+  const blockedReason = epic?.blocked_note || epic?.blocked_reason || "";
   const tags = Array.isArray(epic?.tags) ? epic?.tags.map((t) => String(t ?? "")).map((t) => t.replace(/,+$/, "").trim()).filter((t) => t.length > 0) : [];
   const users = opts.users || [];
   const assignedId = epic?.assigned_to || epic?.assignedTo;
@@ -3089,10 +3160,11 @@ function renderHtml2(csp, nonce, opts) {
   <div class="row"><label></label><div class="color-palette" id="palette"></div></div>
   <div class="row"><label>Status</label>${statusSelect}</div>
   <div class="row"><label>Flags</label>
-    <div class="flags" style="display:flex; gap:8px;">
+    <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
       <button id="teamReq" title="Team requirement">\u{1F465}</button>
       <button id="clientReq" title="Client requirement">\u{1F464}</button>
       <button id="blocked" title="Blocked">\u26D4</button>
+      <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml3(String(blockedReason || ""))}" />
     </div>
   </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml3(tags.join(", "))}" /></div>
@@ -3249,6 +3321,7 @@ function renderHtml2(csp, nonce, opts) {
   const teamBtn = document.getElementById('teamReq');
   const clientBtn = document.getElementById('clientReq');
   const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
   const tagsInput = document.getElementById('tags');
   // initialize flags
   let teamRequirement = ${teamReq ? "true" : "false"};
@@ -3276,7 +3349,8 @@ function renderHtml2(csp, nonce, opts) {
       status: statusInput.value,
       team_requirement: teamRequirement,
       client_requirement: clientRequirement,
-      blocked: isBlocked,
+  blocked: isBlocked,
+  blocked_reason: blockedReasonInput ? (blockedReasonInput).value : '',
       tags: (tagsInput.value||'')
         .split(',')
         .map(s=>s.replace(/,+$/, '').trim())
@@ -3323,7 +3397,7 @@ var vscode12 = __toESM(require("vscode"));
 var SprintEditor = class {
   static async openForCreate(sprintService, projectId) {
     const panel = vscode12.window.createWebviewPanel("taigaSprintEditor", "New Sprint", vscode12.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode12.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+    const ext = vscode12.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode12.extensions.getExtension("antpavlenko.taiga-mcp-extension");
     if (ext)
       panel.iconPath = {
         light: vscode12.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),
@@ -3349,7 +3423,7 @@ var SprintEditor = class {
   }
   static async openForEdit(sprintService, sprint) {
     const panel = vscode12.window.createWebviewPanel("taigaSprintEditor", `Edit Sprint: ${sprint.name || sprint.id}`, vscode12.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode12.extensions.getExtension("antpavlenko.taiga-mcp-extension");
+    const ext = vscode12.extensions.getExtension("AntonPavlenko.taiga-mcp-extension") || vscode12.extensions.getExtension("antpavlenko.taiga-mcp-extension");
     if (ext)
       panel.iconPath = {
         light: vscode12.Uri.joinPath(ext.extensionUri, "media/taiga-emblem-light.svg"),

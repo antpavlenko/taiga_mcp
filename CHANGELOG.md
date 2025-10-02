@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.0.1] - 2025-10-02
+
+### Fixed
+- Added Blocked property and Reason field across all editors (Issues, Epics, User Stories, Tasks). Reason input appears to the right of the Blocked control where applicable and is saved as blocked_note.
+- Issues now include a Sprint field in the editor and can be filtered by Sprint in the Issues view. Backlog is supported via the tri-state sprint filter.
+- Epic filter no longer affects Issues; Issues are independent of epic filter settings.
+- Webview tab icons are now set for all editors using the Taiga emblem (light/dark), ensuring no blank tab icons.
+
+### Changed
+- Bumped extension version to 1.0.1.
+
 ## [1.0.0] - 2025-09-28
 
 ### Added
@@ -24,5 +35,3 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### Fixed
 - Epic editor webview parsing error caused by TS-only inline cast
 - Issue metadata compatibility across Taiga servers (fallback endpoints for types/severities/priorities)
-
-[1.0.0]: https://github.com/antpavlenko/taiga_mcp/releases/tag/v1.0.0

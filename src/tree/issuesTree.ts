@@ -12,6 +12,7 @@ export class IssuesTreeProvider implements vscode.TreeDataProvider<IssueItem> {
   private tokenPresent = false;
   private includeClosed = false;
   private selectedEpicIds: number[] = [];
+  private selectedSprintId: number | null | undefined = undefined; // undefined=no filter, null=Backlog, number=sprint
 
   constructor(private issueService: IssueService) {}
 
@@ -22,9 +23,9 @@ export class IssuesTreeProvider implements vscode.TreeDataProvider<IssueItem> {
 
   setIncludeClosed(v: boolean) { this.includeClosed = v; this.refresh(); }
   getIncludeClosed(): boolean { return this.includeClosed; }
-  setEpicFilter(ids: number[]) { this.selectedEpicIds = ids; this.refresh(); }
+  setEpicFilter(ids: number[]) { this.selectedEpicIds = ids; /* requirement: epic filter must not be applied to issues */ this.refresh(); }
   getEpicFilter(): number[] { return this.selectedEpicIds; }
-  setSprintFilter(_id: number | null | undefined) { /* Currently issues are not scoped by sprint in this tree. Method kept for API symmetry. */ }
+  setSprintFilter(id: number | null | undefined) { this.selectedSprintId = id; this.refresh(); }
 
   refresh(): void { this.load(); }
   setConnectionState(opts: { baseUrlSet: boolean; tokenPresent: boolean }) {
@@ -39,17 +40,8 @@ export class IssuesTreeProvider implements vscode.TreeDataProvider<IssueItem> {
     this._onDidChangeTreeData.fire();
     try {
       if (this.activeProjectId) {
-        this.issues = await this.issueService.listIssues(this.activeProjectId, this.includeClosed);
-        if (this.selectedEpicIds?.length) {
-          const set = new Set(this.selectedEpicIds.map(x => String(x)));
-          // Support multiple shapes: Taiga issues may expose epic via 'epic', 'epicId', or 'epics' array in some setups
-          this.issues = this.issues.filter((i: any) => {
-            const single = i?.epicId ?? i?.epic;
-            if (single != null && set.has(String(single))) return true;
-            const arr = Array.isArray(i?.epics) ? i.epics : [];
-            return arr.some((e: any) => set.has(String(e)) || set.has(String(e?.id ?? e)));
-          });
-        }
+        this.issues = await this.issueService.listIssues(this.activeProjectId, this.includeClosed, this.selectedSprintId);
+        // Requirement: do not apply epic filter to issues
       } else {
         this.issues = [];
       }

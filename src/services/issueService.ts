@@ -4,9 +4,11 @@ import { ID, Issue } from '../models/types';
 export class IssueService {
   constructor(private api: TaigaApiClient) {}
 
-  async listIssues(projectId: number, includeClosed: boolean): Promise<Issue[]> {
+  async listIssues(projectId: number, includeClosed: boolean, milestoneId?: number | null): Promise<Issue[]> {
     const query: any = { project: projectId };
     if (!includeClosed) { (query as any)['status__is_closed'] = false; }
+    if (milestoneId === null) { (query as any)['milestone__isnull'] = true; }
+    else if (typeof milestoneId === 'number') { (query as any)['milestone'] = milestoneId; }
     const { data, error } = await this.api.get<any>('/issues', { query });
     if (error || data == null) return [];
     if (Array.isArray(data)) return data as Issue[];
@@ -14,7 +16,7 @@ export class IssueService {
     return [];
   }
 
-  async createIssue(input: { projectId: ID; subject: string; description?: string; statusId?: ID; assignedTo?: ID; tags?: string[]; dueDate?: string; typeId?: ID; severityId?: ID; priorityId?: ID }): Promise<Issue | undefined> {
+  async createIssue(input: { projectId: ID; subject: string; description?: string; statusId?: ID; assignedTo?: ID; tags?: string[]; dueDate?: string; typeId?: ID; severityId?: ID; priorityId?: ID; milestoneId?: ID; isBlocked?: boolean; blockedReason?: string }): Promise<Issue | undefined> {
     const payload: any = { project: input.projectId, subject: input.subject };
     if (input.description !== undefined) payload.description = input.description;
     if (input.statusId !== undefined) payload.status = input.statusId;
@@ -24,12 +26,15 @@ export class IssueService {
     if (input.typeId !== undefined) payload.type = input.typeId;
     if (input.severityId !== undefined) payload.severity = input.severityId;
     if (input.priorityId !== undefined) payload.priority = input.priorityId;
+    if (input.milestoneId !== undefined) payload.milestone = input.milestoneId;
+    if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+    if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
     const { data, error } = await this.api.post<Issue>('/issues', payload);
     if (error) return undefined;
     return data as Issue;
   }
 
-  async updateIssue(id: ID, input: { subject?: string | null; description?: string | null; statusId?: ID | null; assignedTo?: ID | null; tags?: string[]; dueDate?: string | null; typeId?: ID | null; severityId?: ID | null; priorityId?: ID | null; version?: number }): Promise<Issue | undefined> {
+  async updateIssue(id: ID, input: { subject?: string | null; description?: string | null; statusId?: ID | null; assignedTo?: ID | null; tags?: string[]; dueDate?: string | null; typeId?: ID | null; severityId?: ID | null; priorityId?: ID | null; milestoneId?: ID | null; isBlocked?: boolean | null; blockedReason?: string | null; version?: number }): Promise<Issue | undefined> {
     const payload: any = {};
     if (input.subject !== undefined) payload.subject = input.subject;
     if (input.description !== undefined) payload.description = input.description;
@@ -40,6 +45,9 @@ export class IssueService {
     if (input.typeId !== undefined) payload.type = input.typeId;
     if (input.severityId !== undefined) payload.severity = input.severityId;
     if (input.priorityId !== undefined) payload.priority = input.priorityId;
+    if (input.milestoneId !== undefined) payload.milestone = input.milestoneId;
+    if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+    if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
     if (input.version !== undefined) payload.version = input.version;
     const { data, error } = await this.api.patch<Issue>(`/issues/${id}`, payload);
     if (error) return undefined;

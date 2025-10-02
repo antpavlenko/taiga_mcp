@@ -5,7 +5,7 @@ import { Sprint } from '../models/types';
 export class SprintEditor {
   static async openForCreate(sprintService: SprintService, projectId: number) {
     const panel = vscode.window.createWebviewPanel('taigaSprintEditor', 'New Sprint', vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext) panel.iconPath = {
       light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -26,7 +26,7 @@ export class SprintEditor {
 
   static async openForEdit(sprintService: SprintService, sprint: Sprint) {
     const panel = vscode.window.createWebviewPanel('taigaSprintEditor', `Edit Sprint: ${(sprint as any).name || sprint.id}`, vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext) panel.iconPath = {
       light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),

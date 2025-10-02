@@ -8,7 +8,7 @@ import { Epic } from '../models/types';
 export class EpicEditor {
   static async openForCreate(epicService: EpicService, projectId: number, users?: UserRef[], statuses?: EpicStatus[], siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaEpicEditor', 'New Epic', vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext) panel.iconPath = {
       light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -36,7 +36,7 @@ export class EpicEditor {
 
   static async openForEdit(epicService: EpicService, epic: Epic, users?: UserRef[], statuses?: EpicStatus[], storyService?: UserStoryService, siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaEpicEditor', `Edit Epic: ${(epic as any).title || (epic as any).subject || epic.id}`, vscode.ViewColumn.Active, { enableScripts: true });
-    const ext2 = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext2 = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext2) panel.iconPath = {
       light: vscode.Uri.joinPath(ext2.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext2.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -149,6 +149,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; e
   const teamReq = !!(epic as any)?.team_requirement;
   const clientReq = !!(epic as any)?.client_requirement;
   const blocked = !!(epic as any)?.is_blocked || !!(epic as any)?.blocked;
+  const blockedReason = (epic as any)?.blocked_note || (epic as any)?.blocked_reason || '';
   const tags: string[] = Array.isArray((epic as any)?.tags)
     ? (epic as any)?.tags
         .map((t: any) => String(t ?? ''))
@@ -222,10 +223,11 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; e
   <div class="row"><label></label><div class="color-palette" id="palette"></div></div>
   <div class="row"><label>Status</label>${statusSelect}</div>
   <div class="row"><label>Flags</label>
-    <div class="flags" style="display:flex; gap:8px;">
+    <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
       <button id="teamReq" title="Team requirement">👥</button>
       <button id="clientReq" title="Client requirement">👤</button>
       <button id="blocked" title="Blocked">⛔</button>
+      <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml(String(blockedReason||''))}" />
     </div>
   </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml(tags.join(', '))}" /></div>
@@ -382,6 +384,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; e
   const teamBtn = document.getElementById('teamReq');
   const clientBtn = document.getElementById('clientReq');
   const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
   const tagsInput = document.getElementById('tags');
   // initialize flags
   let teamRequirement = ${teamReq ? 'true' : 'false'};
@@ -409,7 +412,8 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; e
       status: statusInput.value,
       team_requirement: teamRequirement,
       client_requirement: clientRequirement,
-      blocked: isBlocked,
+  blocked: isBlocked,
+  blocked_reason: blockedReasonInput ? (blockedReasonInput).value : '',
       tags: (tagsInput.value||'')
         .split(',')
         .map(s=>s.replace(/,+$/, '').trim())

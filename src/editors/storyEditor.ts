@@ -9,7 +9,7 @@ import { UserService } from '../services/userService';
 export class StoryEditor {
   static async openForCreate(storyService: UserStoryService, epicService: EpicService, sprintService: SprintService, projectId: number, preselectedEpicIds?: number[], siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaStoryEditor', 'New User Story', vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext) panel.iconPath = {
       light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -41,7 +41,7 @@ export class StoryEditor {
 
   static async openForEdit(storyService: UserStoryService, epicService: EpicService, sprintService: SprintService, story: UserStory, siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaStoryEditor', `Edit Story: ${story.subject || story.id}`, vscode.ViewColumn.Active, { enableScripts: true });
-    const ext2 = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext2 = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext2) panel.iconPath = {
       light: vscode.Uri.joinPath(ext2.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext2.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -221,6 +221,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; p
   const statuses = Array.from(new Map((opts.statuses || []).map(s => [String(s.id), s])).values());
   const statusOptions = ['<option value="">(none)</option>', ...statuses.map(s=>`<option value="${s.id}" ${String(statusId)===String(s.id)?'selected':''}>${escapeHtml(s.name)}</option>`)].join('');
   const isBlocked = !!(story as any)?.is_blocked || !!(story as any)?.blocked;
+  const blockedReason = (story as any)?.blocked_note || (story as any)?.blocked_reason || '';
   const storyRef = (story as any)?.ref || (story as any)?.id;
   const linkedTasks = Array.isArray((opts as any).linkedTasks) ? (opts as any).linkedTasks : [];
   const taskStatuses = Array.isArray((opts as any).taskStatuses) ? (opts as any).taskStatuses : [];
@@ -274,10 +275,11 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; p
   <div class="row"><label>Status</label><select id="status">${statusOptions}</select></div>
   <div class="row"><label>Due date</label><input id="dueDate" type="date" value="${escapeHtml(((story as any)?.due_date || '').toString().slice(0,10))}" /></div>
     <div class="row"><label>Flags</label>
-      <div class="flags" style="display:flex; gap:8px;">
+      <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
         <button id="teamReq" title="Team requirement">👥</button>
         <button id="clientReq" title="Client requirement">👤</button>
         <button id="blocked" title="Blocked">⛔</button>
+        <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml(String(blockedReason||''))}" />
       </div>
     </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml(tags.join(', '))}" /></div>
@@ -439,6 +441,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; p
     const teamBtn = document.getElementById('teamReq');
     const clientBtn = document.getElementById('clientReq');
   const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
   function renderFlag(btn, active){ btn.style.opacity = active ? '1' : '0.5'; }
     let teamRequirement = ${((story as any)?.team_requirement ? 'true' : 'false')};
     let clientRequirement = ${((story as any)?.client_requirement ? 'true' : 'false')};
@@ -577,7 +580,8 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; p
       tags: (document.getElementById('tags')).value.split(',').map(s=>s.replace(/,+$/, '').trim()).filter(s=>s.length>0),
       team_requirement: teamRequirement,
       client_requirement: clientRequirement,
-      is_blocked: _isBlocked,
+  is_blocked: _isBlocked,
+  blocked_reason: blockedReasonInput ? (blockedReasonInput).value : '',
       due_date: (document.getElementById('dueDate')).value,
       points: pts
     }});

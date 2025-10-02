@@ -6,7 +6,7 @@ import { UserRef, Issue } from '../models/types';
 export class IssueEditor {
   static async openForCreate(issueService: IssueService, projectId: number, siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaIssueEditor', 'New Issue', vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+    const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
   if (ext) panel.iconPath = {
     light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
     dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -19,11 +19,15 @@ export class IssueEditor {
   const types = await (async () => { try { return await issueService.listIssueTypes(projectId); } catch { return []; } })();
   const severities = await (async () => { try { return await issueService.listIssueSeverities(projectId); } catch { return []; } })();
   const priorities = await (async () => { try { return await issueService.listIssuePriorities(projectId); } catch { return []; } })();
-  panel.webview.html = renderHtml(csp, nonce, { mode: 'create', users, statuses, siteBaseUrl, projectSlug, types, severities, priorities });
+  // Load sprints for sprint selector
+  const { SprintService } = await import('../services/sprintService');
+  const sprintService = new SprintService((issueService as any)['api']);
+  const sprints = await (async () => { try { return await sprintService.listSprints(projectId); } catch { return []; } })();
+  panel.webview.html = renderHtml(csp, nonce, { mode: 'create', users, statuses, siteBaseUrl, projectSlug, types, severities, priorities, sprints });
     panel.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === 'save') {
-  const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId } = msg.payload || {};
-  const res = await issueService.createIssue({ projectId, subject, description, statusId, assignedTo, dueDate: due_date, tags, typeId, severityId, priorityId });
+  const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId, sprintId, is_blocked, blocked_reason } = msg.payload || {};
+  const res = await issueService.createIssue({ projectId, subject, description, statusId, assignedTo, dueDate: due_date, tags, typeId, severityId, priorityId, milestoneId: sprintId, isBlocked: is_blocked, blockedReason: blocked_reason });
         if (!res) { await handleTokenError(issueService, 'Creating issue failed'); return; }
         vscode.window.showInformationMessage('Issue created'); panel.dispose(); vscode.commands.executeCommand('taiga.refreshAll');
       }
@@ -33,7 +37,7 @@ export class IssueEditor {
 
   static async openForEdit(issueService: IssueService, issue: Issue, siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaIssueEditor', `Edit Issue: ${issue.subject || issue.id}`, vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+    const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
   if (ext) panel.iconPath = {
     light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
     dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -48,11 +52,16 @@ export class IssueEditor {
     const severities = await (async () => { try { return pid ? await issueService.listIssueSeverities(Number(pid)) : []; } catch { return []; } })();
     const priorities = await (async () => { try { return pid ? await issueService.listIssuePriorities(Number(pid)) : []; } catch { return []; } })();
     const full = await (async () => { try { return await (issueService as any).getIssue?.(issue.id) || issue; } catch { return issue; } })();
-    panel.webview.html = renderHtml(csp, nonce, { mode: 'edit', issue: full, users, statuses, types, severities, priorities, siteBaseUrl, projectSlug });
+    // Load sprints for sprint selector
+    const { SprintService } = await import('../services/sprintService');
+    const sprintService = new SprintService((issueService as any)['api']);
+    const pidNum = Number((issue as any).projectId ?? (issue as any).project ?? 0);
+    const sprints = await (async () => { try { return pidNum ? await sprintService.listSprints(pidNum) : []; } catch { return []; } })();
+    panel.webview.html = renderHtml(csp, nonce, { mode: 'edit', issue: full, users, statuses, types, severities, priorities, siteBaseUrl, projectSlug, sprints });
     panel.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === 'save') {
-        const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId } = msg.payload || {};
-        const res = await issueService.updateIssue(issue.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? undefined, typeId: typeId ?? null, severityId: severityId ?? null, priorityId: priorityId ?? null, version: (full as any)?.version });
+        const { subject, description, statusId, assignedTo, due_date, tags, typeId, severityId, priorityId, sprintId, is_blocked, blocked_reason } = msg.payload || {};
+        const res = await issueService.updateIssue(issue.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? undefined, typeId: typeId ?? null, severityId: severityId ?? null, priorityId: priorityId ?? null, milestoneId: sprintId ?? null, isBlocked: is_blocked ?? null, blockedReason: blocked_reason ?? null, version: (full as any)?.version });
         if (!res) { await handleTokenError(issueService, 'Updating issue failed'); return; }
         vscode.window.showInformationMessage('Issue updated'); panel.dispose(); vscode.commands.executeCommand('taiga.refreshAll');
       }
@@ -76,7 +85,7 @@ async function handleTokenError(service: any, fallbackMsg: string) {
   }
 }
 
-function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; issue?: Issue; users?: UserRef[]; statuses?: Array<{ id:number; name:string }>; types?: Array<{ id:number; name:string }>; severities?: Array<{ id:number; name:string }>; priorities?: Array<{ id:number; name:string }>; siteBaseUrl?: string; projectSlug?: string }){
+function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; issue?: Issue; users?: UserRef[]; statuses?: Array<{ id:number; name:string }>; types?: Array<{ id:number; name:string }>; severities?: Array<{ id:number; name:string }>; priorities?: Array<{ id:number; name:string }>; sprints?: Array<{ id:number; name:string }>; siteBaseUrl?: string; projectSlug?: string }){
   const t = opts.issue as any;
   const subject = t?.subject || '';
   const description = t?.description || '';
@@ -92,11 +101,16 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; i
   const typeId = (t?.type && (t?.type.id ?? t?.type)) ?? t?.type;
   const severityId = (t?.severity && (t?.severity.id ?? t?.severity)) ?? t?.severity;
   const priorityId = (t?.priority && (t?.priority.id ?? t?.priority)) ?? t?.priority;
+  const sprintId = (t?.milestone && (t?.milestone.id ?? t?.milestone)) ?? t?.milestone ?? t?.milestoneId;
+  const isBlocked = !!(t?.is_blocked || t?.blocked);
+  const blockedReason = t?.blocked_note || t?.blocked_reason || '';
   const userOptions = ['<option value="">Unassigned</option>', ...users.map(u=>`<option value="${u.id}" ${String(assignedId)===String(u.id)?'selected':''}>${escapeHtml(u.fullName || u.username)}</option>`)].join('');
   const statusOptions = ['<option value="">(none)</option>', ...statuses.map(s=>`<option value="${s.id}" ${String(statusId)===String(s.id)?'selected':''}>${escapeHtml(s.name)}</option>`)].join('');
   const typeOptions = ['<option value="">(none)</option>', ...types.map(s=>`<option value="${s.id}" ${String(typeId)===String(s.id)?'selected':''}>${escapeHtml(s.name)}</option>`)].join('');
   const severityOptions = ['<option value="">(none)</option>', ...severities.map(s=>`<option value="${s.id}" ${String(severityId)===String(s.id)?'selected':''}>${escapeHtml(s.name)}</option>`)].join('');
   const priorityOptions = ['<option value="">(none)</option>', ...priorities.map(s=>`<option value="${s.id}" ${String(priorityId)===String(s.id)?'selected':''}>${escapeHtml(s.name)}</option>`)].join('');
+  const sprints = opts.sprints || [];
+  const sprintOptions = ['<option value="">(none)</option>', ...sprints.map(s=>`<option value="${(s as any).id}" ${String(sprintId)===String((s as any).id)?'selected':''}>${escapeHtml((s as any).name || String((s as any).id))}</option>`)].join('');
   const ref = t?.ref || t?.id;
   return `<!DOCTYPE html>
   <html><head><meta charset="UTF-8" />
@@ -125,6 +139,13 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; i
   <div class="row"><label>Type</label><select id="type">${typeOptions}</select></div>
   <div class="row"><label>Severity</label><select id="severity">${severityOptions}</select></div>
   <div class="row"><label>Priority</label><select id="priority">${priorityOptions}</select></div>
+  <div class="row"><label>Sprint</label><select id="sprint">${sprintOptions}</select></div>
+  <div class="row"><label>Flags</label>
+    <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
+      <button id="blocked" title="Blocked">⛔</button>
+      <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml(String(blockedReason||''))}" />
+    </div>
+  </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml(tags.join(', '))}" /></div>
   <div class="row"><label>Due date</label><input id="dueDate" type="date" value="${escapeHtml(dueDate)}" /></div>
   ${(() => { const base = opts.siteBaseUrl || ''; const slug = opts.projectSlug; let url = ''; if (opts.mode==='edit'){ const idPart = String(ref || ''); if (base) url = slug ? `${base}/project/${encodeURIComponent(slug)}/issue/${idPart}` : `${base}/issue/${idPart}`; } else { if (base) url = slug ? `${base}/project/${encodeURIComponent(slug)}/issues` : `${base}/issues`; } const linkHtml = url ? ` (<a href="${url}" target="_blank">${escapeHtml(url)}</a>)` : ''; return `<div class=\"row\"><label></label><div class=\"note\">Comments can be edited in Taiga interface only${linkHtml}</div></div>`; })()}
@@ -134,6 +155,11 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; i
   </div>
   <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
+  const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
+  let _isBlocked = ${isBlocked ? 'true' : 'false'};
+  function renderFlag(btn, active){ btn.style.opacity = active ? '1' : '0.5'; }
+  if (blockedBtn) { renderFlag(blockedBtn, _isBlocked); blockedBtn.addEventListener('click', ()=>{ _isBlocked = !_isBlocked; renderFlag(blockedBtn, _isBlocked); }); }
   const saveBtn = document.getElementById('save');
   if (saveBtn) saveBtn.addEventListener('click', () => {
     vscode.postMessage({ type: 'save', payload: {
@@ -144,6 +170,9 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; i
   severityId: parseNullableInt((document.getElementById('severity')).value),
   priorityId: parseNullableInt((document.getElementById('priority')).value),
       assignedTo: parseNullableInt((document.getElementById('assigned')).value),
+      sprintId: parseNullableInt((document.getElementById('sprint')).value),
+      is_blocked: _isBlocked,
+      blocked_reason: blockedReasonInput ? (blockedReasonInput).value : '',
       due_date: (document.getElementById('dueDate')).value,
       tags: (document.getElementById('tags')).value.split(',').map(s=>s.replace(/,+$/, '').trim()).filter(s=>s.length>0)
     }});

@@ -6,7 +6,7 @@ import { Task, UserRef } from '../models/types';
 export class TaskEditor {
   static async openForCreate(taskService: TaskService, projectId: number, userStoryId: number, siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaTaskEditor', 'New Task', vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext) panel.iconPath = {
       light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -20,8 +20,8 @@ export class TaskEditor {
     panel.webview.html = renderHtml(csp, nonce, { mode: 'create', users, statuses, siteBaseUrl, projectSlug, projectId, userStoryId });
     panel.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === 'save') {
-        const { subject, description, statusId, assignedTo, due_date, tags, is_blocked } = msg.payload || {};
-        const created = await taskService.createTask({ projectId, userStoryId, subject, description, statusId, assignedTo, dueDate: due_date, tags, isBlocked: is_blocked });
+  const { subject, description, statusId, assignedTo, due_date, tags, is_blocked, blocked_reason } = msg.payload || {};
+  const created = await taskService.createTask({ projectId, userStoryId, subject, description, statusId, assignedTo, dueDate: due_date, tags, isBlocked: is_blocked, blockedReason: blocked_reason });
         if (created) { vscode.window.showInformationMessage('Task created'); panel.dispose(); vscode.commands.executeCommand('taiga.refreshAll'); }
         else { await handleTokenError(taskService, 'Creating task failed'); }
       }
@@ -31,7 +31,7 @@ export class TaskEditor {
 
   static async openForEdit(taskService: TaskService, task: Task, siteBaseUrl?: string, projectSlug?: string) {
     const panel = vscode.window.createWebviewPanel('taigaTaskEditor', `Edit Task: ${task.subject || task.id}`, vscode.ViewColumn.Active, { enableScripts: true });
-    const ext = vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
+  const ext = vscode.extensions.getExtension('AntonPavlenko.taiga-mcp-extension') || vscode.extensions.getExtension('antpavlenko.taiga-mcp-extension');
     if (ext) panel.iconPath = {
       light: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-light.svg'),
       dark: vscode.Uri.joinPath(ext.extensionUri, 'media/taiga-emblem-dark.svg'),
@@ -47,8 +47,8 @@ export class TaskEditor {
     panel.webview.html = renderHtml(csp, nonce, { mode: 'edit', task: full, users, statuses, siteBaseUrl, projectSlug, projectId: Number(pid || 0), userStoryId: Number((full as any).user_story || (full as any).userStoryId || 0) });
     panel.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === 'save') {
-        const { subject, description, statusId, assignedTo, due_date, tags, is_blocked } = msg.payload || {};
-        const updated = await taskService.updateTask(task.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? undefined, isBlocked: is_blocked ?? null, version: (full as any)?.version });
+  const { subject, description, statusId, assignedTo, due_date, tags, is_blocked, blocked_reason } = msg.payload || {};
+  const updated = await taskService.updateTask(task.id, { subject, description: description ?? null, statusId: statusId ?? null, assignedTo: assignedTo ?? null, dueDate: due_date ?? null, tags: tags ?? undefined, isBlocked: is_blocked ?? null, blockedReason: blocked_reason ?? null, version: (full as any)?.version });
         if (updated) { vscode.window.showInformationMessage('Task updated'); panel.dispose(); vscode.commands.executeCommand('taiga.refreshAll'); }
         else { await handleTokenError(taskService, 'Updating task failed'); }
       }
@@ -65,6 +65,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; t
   const statusId = t?.status?.id ?? t?.status ?? t?.statusId;
   const dueDate = (t?.due_date || '').toString().slice(0,10);
   const isBlocked = !!(t?.is_blocked || t?.blocked);
+  const blockedReason = t?.blocked_note || t?.blocked_reason || '';
   const tags: string[] = Array.isArray(t?.tags) ? (t?.tags || []).map((x:any)=>String(x??'').replace(/,+$/, '').trim()).filter((s:string)=>s.length>0) : [];
   const users = opts.users || [];
   const statuses = opts.statuses || [];
@@ -96,8 +97,9 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; t
   <div class="row"><label>Description</label><textarea id="desc" rows="6">${escapeHtml(description)}</textarea></div>
   <div class="row"><label>Status</label><select id="status">${statusOptions}</select></div>
   <div class="row"><label>Flags</label>
-    <div class="flags" style="display:flex; gap:8px;">
+    <div class="flags" style="display:flex; gap:8px; align-items:center; width:100%;">
       <button id="blocked" title="Blocked">⛔</button>
+      <input id="blockedReason" type="text" placeholder="Reason" value="${escapeHtml(String(blockedReason||''))}" />
     </div>
   </div>
   <div class="row"><label>Tags</label><input id="tags" type="text" placeholder="Comma-separated" value="${escapeHtml(tags.join(', '))}" /></div>
@@ -110,6 +112,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; t
   <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const blockedBtn = document.getElementById('blocked');
+  const blockedReasonInput = document.getElementById('blockedReason');
   let _isBlocked = ${isBlocked ? 'true' : 'false'};
   function renderFlag(btn, active){ btn.style.opacity = active ? '1' : '0.5'; }
   if (blockedBtn) { renderFlag(blockedBtn, _isBlocked); blockedBtn.addEventListener('click', ()=>{ _isBlocked = !_isBlocked; renderFlag(blockedBtn, _isBlocked); }); }
@@ -122,7 +125,8 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; t
       assignedTo: parseNullableInt((document.getElementById('assigned')).value),
       due_date: (document.getElementById('dueDate')).value,
       tags: (document.getElementById('tags')).value.split(',').map(s=>s.replace(/,+$/, '').trim()).filter(s=>s.length>0),
-      is_blocked: _isBlocked
+      is_blocked: _isBlocked,
+      blocked_reason: blockedReasonInput ? (blockedReasonInput).value : ''
     }});
   });
   const cancelBtn = document.getElementById('cancel'); if (cancelBtn) cancelBtn.addEventListener('click', ()=>vscode.postMessage({ type: 'cancel' }));

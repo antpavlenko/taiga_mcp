@@ -10,6 +10,7 @@ export interface CreateEpicInput {
   teamRequirement?: boolean;
   clientRequirement?: boolean;
   isBlocked?: boolean;
+  blockedReason?: string;
   statusId?: ID;
   tags?: string[];
   assignedTo?: ID;
@@ -21,6 +22,7 @@ export interface UpdateEpicInput {
   teamRequirement?: boolean;
   clientRequirement?: boolean;
   isBlocked?: boolean;
+  blockedReason?: string | null;
   statusId?: ID | null;
   tags?: string[];
   assignedTo?: ID | null;
@@ -62,6 +64,7 @@ export class EpicService {
     if (input.teamRequirement !== undefined) payload.team_requirement = input.teamRequirement;
     if (input.clientRequirement !== undefined) payload.client_requirement = input.clientRequirement;
     if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+  if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
     if (input.statusId !== undefined) payload.status = input.statusId;
     if (input.tags !== undefined) payload.tags = input.tags;
     if (input.assignedTo !== undefined) payload.assigned_to = input.assignedTo;
@@ -78,6 +81,7 @@ export class EpicService {
     if (input.teamRequirement !== undefined) payload.team_requirement = input.teamRequirement;
     if (input.clientRequirement !== undefined) payload.client_requirement = input.clientRequirement;
     if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+  if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
     if (input.statusId !== undefined) payload.status = input.statusId;
     if (input.tags !== undefined) payload.tags = input.tags;
     if (input.assignedTo !== undefined) payload.assigned_to = input.assignedTo;

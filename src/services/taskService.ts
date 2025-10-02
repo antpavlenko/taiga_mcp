@@ -1,8 +1,8 @@
 import { TaigaApiClient } from '../api/taigaApiClient';
 import { ID, Task } from '../models/types';
 
-export interface CreateTaskInput { projectId: ID; userStoryId: ID; subject: string; description?: string; statusId?: ID; assignedTo?: ID; dueDate?: string; tags?: string[]; isBlocked?: boolean; }
-export interface UpdateTaskInput { subject?: string | null; description?: string | null; statusId?: ID | null; assignedTo?: ID | null; userStoryId?: ID | null; dueDate?: string | null; tags?: string[]; isBlocked?: boolean | null; version?: number; }
+export interface CreateTaskInput { projectId: ID; userStoryId: ID; subject: string; description?: string; statusId?: ID; assignedTo?: ID; dueDate?: string; tags?: string[]; isBlocked?: boolean; blockedReason?: string; }
+export interface UpdateTaskInput { subject?: string | null; description?: string | null; statusId?: ID | null; assignedTo?: ID | null; userStoryId?: ID | null; dueDate?: string | null; tags?: string[]; isBlocked?: boolean | null; blockedReason?: string | null; version?: number; }
 
 export class TaskService {
   constructor(private api: TaigaApiClient) {}
@@ -30,7 +30,8 @@ export class TaskService {
     if (input.assignedTo !== undefined) payload.assigned_to = input.assignedTo;
     if (input.dueDate !== undefined) payload.due_date = input.dueDate;
     if (input.tags !== undefined) payload.tags = input.tags;
-    if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+  if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+  if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
     const { data, error } = await this.api.post<Task>('/tasks', payload);
     if (error) return undefined;
     return data as Task;
@@ -45,7 +46,8 @@ export class TaskService {
     if (input.userStoryId !== undefined) payload.user_story = input.userStoryId;
     if (input.dueDate !== undefined) payload.due_date = input.dueDate;
     if (input.tags !== undefined) payload.tags = input.tags;
-    if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+  if (input.isBlocked !== undefined) payload.is_blocked = input.isBlocked;
+  if (input.blockedReason !== undefined) payload.blocked_note = input.blockedReason;
     if (input.version !== undefined) payload.version = input.version;
     const { data, error } = await this.api.patch<Task>(`/tasks/${id}`, payload);
     if (error) return undefined;
