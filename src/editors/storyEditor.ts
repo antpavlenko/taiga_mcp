@@ -299,11 +299,11 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; p
     if (opts.mode === 'edit') {
       const idPart = String((story as any)?.ref || (story as any)?.id || '');
       if (base) {
-        url = slug ? `${base}/project/${encodeURIComponent(slug)}/userstory/${idPart}` : `${base}/userstory/${idPart}`;
+        url = slug ? `${base}/project/${encodeURIComponent(slug)}/us/${idPart}` : `${base}/us/${idPart}`;
       }
     } else {
       if (base) {
-        url = slug ? `${base}/project/${encodeURIComponent(slug)}/userstories` : `${base}/userstories`;
+        url = slug ? `${base}/project/${encodeURIComponent(slug)}/us` : `${base}/us`;
       }
     }
     const linkHtml = url ? ` (<a href="${url}" target="_blank">${escapeHtml(url)}</a>)` : '';
@@ -324,7 +324,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; p
   </div>
   <table class="list">
     <thead><tr>
-      <th class="sortable" data-key="id" style="width:90px;">ID <span class="dir" id="dir2-id"></span></th>
+      <th class="sortable" data-key="id" style="width:90px;">Ref <span class="dir" id="dir2-id"></span></th>
       <th class="sortable" data-key="name">Name <span class="dir" id="dir2-name"></span></th>
       <th class="sortable" data-key="assigned" style="width:200px;">Assigned to <span class="dir" id="dir2-assigned"></span></th>
       <th class="sortable" data-key="status" style="width:160px;">Status <span class="dir" id="dir2-status"></span></th>

@@ -22,9 +22,15 @@ import { NormalizedError } from './models/types';
 import { EpicEditor } from './editors/epicEditor';
 import { StoryEditor } from './editors/storyEditor';
 import { SprintEditor } from './editors/sprintEditor';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 let activeProject: any | undefined;
 // filters persisted via providers/memento in future
+
+// MCP provider change event to refresh definitions when context changes
+let mcpDidChangeEmitter: vscode.EventEmitter<void> | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
   const configMgr = new ConfigurationManager();
@@ -101,6 +107,8 @@ export async function activate(context: vscode.ExtensionContext) {
       sprintsTree.setActiveProject(project?.id);
       storiesTree.setActiveProject(project?.id);
       issuesTree.setActiveProject(project?.id);
+      // inform MCP provider so it can re-resolve with new project context
+      try { mcpDidChangeEmitter?.fire(); } catch {}
     },
     getActiveProject() { return activeProject; },
     showDiagnostics: () => showDiagnostics({
@@ -177,6 +185,85 @@ export async function activate(context: vscode.ExtensionContext) {
     }));
   })();
 
+  // Register an MCP server so Copilot can discover Taiga tools (minimal: list epics)
+  try {
+    // Use dynamic checks to avoid type issues on older VS Code engines
+    const lm: any = (vscode as any).lm;
+    const McpStdioServerDefinition: any = (vscode as any).McpStdioServerDefinition;
+    if (lm && typeof lm.registerMcpServerDefinitionProvider === 'function' && McpStdioServerDefinition) {
+      const didChange = new vscode.EventEmitter<void>();
+      mcpDidChangeEmitter = didChange;
+      const buildDefinition = async () => {
+        const configuredMcp = vscode.workspace.getConfiguration().get<string>('taigaMcp.baseUrl') ?? '';
+        const normalizeBase = (u: string) => (u || '').replace(/\/+$/, '').replace(/\/(api)(\/v\d+)?$/i, '');
+        let fallback = '';
+        try { fallback = new ConfigurationManager().getEffective().baseUrl || ''; } catch {}
+        const baseUrl = normalizeBase(configuredMcp || fallback || '');
+        // token
+        let token = await context.secrets.get('taigaMcp.token');
+        if (!token) {
+          try {
+            const cfgMgr = new ConfigurationManager();
+            const secretId = cfgMgr.getEffective().tokenSecretId;
+            const am = new AuthManager(context);
+            token = await am.getToken(secretId);
+          } catch {}
+        }
+        // don't prompt in provide(); assume token exists for now
+        const projectId = activeProject?.id ? String(activeProject.id) : '';
+        const serverPath = vscode.Uri.file(path.join(context.extensionPath, 'dist', 'mcp', 'server.js'));
+  const McpStdioServerDefinition: any = (vscode as any).McpStdioServerDefinition;
+  const version = `1.1.3${projectId ? `#p${projectId}` : ''}#t${Date.now()}`;
+        // temp config file
+        let cfgFile = '';
+        try {
+          const tmpDir = path.join(os.tmpdir(), 'taiga-mcp');
+          fs.mkdirSync(tmpDir, { recursive: true });
+          cfgFile = path.join(tmpDir, `cfg-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+          const filePayload = { baseUrl, token, projectId };
+          fs.writeFileSync(cfgFile, JSON.stringify(filePayload), { encoding: 'utf8' });
+        } catch {}
+        const args = [serverPath.fsPath, '--base', baseUrl || '', '--project', projectId || ''];
+        if (cfgFile) args.push('--config', cfgFile);
+        const debug = !!vscode.workspace.getConfiguration().get('taigaMcp.debug');
+        const env: any = { TAIGA_BASE_URL: baseUrl, TAIGA_TOKEN: token || '', TAIGA_PROJECT_ID: projectId };
+        if (debug) env.TAIGA_MCP_DEBUG = '1';
+        try {
+          logger.info(`Taiga MCP def built (base=${baseUrl ? 'set' : 'missing'}, token=${token ? 'set' : 'missing'}, project=${projectId || 'none'})`);
+          if (debug) logger.info(`Taiga MCP args: ${args.join(' ')}`);
+        } catch {}
+  return new McpStdioServerDefinition('Taiga MCP', process.execPath, args, env, version);
+      };
+
+      context.subscriptions.push(
+        lm.registerMcpServerDefinitionProvider('taigaMcpProvider', {
+          onDidChangeMcpServerDefinitions: didChange.event,
+          provideMcpServerDefinitions: async () => {
+            const def = await buildDefinition();
+            try { logger.info(`Registered Taiga MCP provider definition (bin=${process.execPath})`); } catch {}
+            return [def];
+          },
+          resolveMcpServerDefinition: async (_server: any) => {
+            // Always return a freshly built definition to avoid host differences in type/shape.
+            return await buildDefinition();
+          }
+        })
+      );
+      // Hint the client that new servers are available
+      try { didChange.fire(); } catch {}
+      try {
+        const chatCfg = vscode.workspace.getConfiguration('chat');
+        const access = (chatCfg && (chatCfg as any).get?.('mcp.access')) as string | undefined;
+        if (String(access).toLowerCase() === 'none') {
+          vscode.window.showWarningMessage('VS Code Chat MCP access is disabled (chat.mcp.access = none). Enable it to use Taiga MCP tools.');
+        }
+      } catch {}
+    }
+  } catch (e) {
+    // Non-fatal if MCP is not available on this VS Code build
+    try { logger.info('MCP API not available in this VS Code build; Taiga MCP tools will be unavailable.'); } catch {}
+  }
+
   // Implement double-click to open Issue editor
   (function setupIssueDoubleClickCommand() {
     let lastById = new Map<string, number>();
@@ -198,6 +285,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // CRUD command implementations (lightweight editors)
   context.subscriptions.push(
+    // Hidden focus commands to prevent default palette clutter
+    vscode.commands.registerCommand('taiga.focusContainer', () => vscode.commands.executeCommand('workbench.view.extension.taiga')),
+    vscode.commands.registerCommand('taiga.focusControls', () => vscode.commands.executeCommand('workbench.view.extension.taigaControls')),
+    vscode.commands.registerCommand('taiga.focusEpics', () => vscode.commands.executeCommand('workbench.view.extension.taigaEpics')),
+    vscode.commands.registerCommand('taiga.focusSprints', () => vscode.commands.executeCommand('workbench.view.extension.taigaSprints')),
+    vscode.commands.registerCommand('taiga.focusUserStories', () => vscode.commands.executeCommand('workbench.view.extension.taigaUserStories')),
+    vscode.commands.registerCommand('taiga.focusIssues', () => vscode.commands.executeCommand('workbench.view.extension.taigaIssues')),
     vscode.commands.registerCommand('taiga.createEpic', async () => {
       if (!activeProject) { vscode.window.showWarningMessage('Select a project first'); return; }
       const [users, statuses] = await Promise.all([
@@ -375,6 +469,37 @@ export async function activate(context: vscode.ExtensionContext) {
       const issue = node?.issue; if (!issue) return;
       const ok = await vscode.window.showWarningMessage(`Delete issue "${issue.subject}"?`, { modal: true }, 'Delete');
       if (ok === 'Delete') { if (await issueService.deleteIssue(issue.id)) { vscode.window.showInformationMessage('Issue deleted'); issuesTree.refresh(); } }
+    }),
+    // Debugging helpers for MCP
+    vscode.commands.registerCommand('taiga.restartMcpServer', async () => {
+      try { mcpDidChangeEmitter?.fire(); vscode.window.showInformationMessage('Taiga MCP: definitions refreshed. Use MCP: List Servers → Refresh.'); } catch (e) { vscode.window.showErrorMessage(`Taiga MCP restart failed: ${(e as Error).message}`); }
+    }),
+    vscode.commands.registerCommand('taiga.showMcpEnvDebug', async () => {
+      const cfgMgr = new ConfigurationManager();
+      const configuredMcp = vscode.workspace.getConfiguration().get<string>('taigaMcp.baseUrl') ?? '';
+      const normalizeBase = (u: string) => (u || '').replace(/\/+$/, '').replace(/\/(api)(\/v\d+)?$/i, '');
+      let fallback = '';
+      try { fallback = cfgMgr.getEffective().baseUrl || ''; } catch {}
+      const baseUrl = normalizeBase(configuredMcp || fallback || '');
+      let token = await context.secrets.get('taigaMcp.token');
+      if (!token) {
+        try { token = await new AuthManager(context).getToken(cfgMgr.getEffective().tokenSecretId); } catch {}
+      }
+      const projectId = activeProject?.id ? String(activeProject.id) : '';
+      const serverPath = vscode.Uri.file(path.join(context.extensionPath, 'dist', 'mcp', 'server.js'));
+      const args = [serverPath.fsPath, '--base', baseUrl || '', '--project', projectId || ''];
+      const msg = `MCP Debug\nbase: ${baseUrl || 'MISSING'}\ntoken: ${token ? 'set' : 'MISSING'}\nproject: ${projectId || 'none'}\nargs: ${args.join(' ')}`;
+      vscode.window.showInformationMessage(msg, { modal: true });
+    }),
+    vscode.commands.registerCommand('taiga.openMcpServerDebugFile', async () => {
+      try {
+        const tmp = path.join(os.tmpdir(), 'taiga-mcp', 'last-start.json');
+        const uri = vscode.Uri.file(tmp);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(doc, { preview: false });
+      } catch (e) {
+        vscode.window.showErrorMessage(`Unable to open MCP debug file: ${(e as Error).message}`);
+      }
     })
   );
 
@@ -412,7 +537,16 @@ export async function activate(context: vscode.ExtensionContext) {
     sprintsTree.refresh();
     storiesTree.refresh();
     issuesTree.refresh();
+    // Notify MCP provider so server picks up new baseUrl if it changed
+    try { mcpDidChangeEmitter?.fire(); } catch {}
   });
+
+  // Also detect direct changes to taigaMcp.baseUrl and trigger MCP refresh
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+    if (e.affectsConfiguration('taigaMcp.baseUrl')) {
+      try { mcpDidChangeEmitter?.fire(); } catch {}
+    }
+  }));
 
   // Persist toggle changes when command invoked
   vscode.commands.registerCommand('taiga.toggleShowClosedIssues', async () => {

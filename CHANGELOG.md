@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.1.0] - 2025-10-03
+## [1.1.1] - 2025-10-05
+
+### Changed
+- MCP: Issue update now accepts ref instead of id and auto-resolves internal ids; descriptions updated to consistently signal ref usage across commands.
+- MCP: Normalized Issues outputs to return human-readable severity/priority/type names; added robust fallbacks for Taiga variants.
+- MCP: Backlog support — setting sprint to null/0/""/"backlog" clears the milestone for issues, tasks, and user stories.
+- MCP: Removed computed field `is_closed` from list/get results to avoid invalid updates by tools.
+- Docs: Updated command catalog to reflect ref-only updates, backlog behavior, and removed `is_closed`.
+
+### Fixed
+- Resolved an issue where Copilot tools would surface numeric severity/priority for Issues on some Taiga servers.
+- Ensured moving items to backlog via the MCP server works reliably across entities.
+
+
+### Added
+- MCP: Context-aware server now receives the active project from the extension and uses it to scope list tools.
+- MCP: Comment tools added for Epics, User Stories, Tasks, and Issues:
+  - `<resource>_comments_list` to read comments by id
+  - `<resource>_comments_create` to create a new comment (text)
+- Docs: README updated with MCP settings (Chat MCP Access/Discovery/NuGet/Autostart) and troubleshooting.
+- Docs: MCP architecture and decoupling guide at `docs/mcp/ARCHITECTURE.md`.
+
+### Changed
+- Bumped extension version to 1.1.0 and aligned embedded MCP server version.
+
 ## [1.0.1] - 2025-10-02
 
 ### Fixed

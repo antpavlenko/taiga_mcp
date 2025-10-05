@@ -264,7 +264,7 @@ function renderHtml(csp: string, nonce: string, opts: { mode: 'create'|'edit'; e
   </div>
   <table class="list">
     <thead><tr>
-      <th class="sortable" data-key="id" style="width:90px;">ID <span class="dir" id="dir-id"></span></th>
+      <th class="sortable" data-key="id" style="width:90px;">Ref <span class="dir" id="dir-id"></span></th>
       <th class="sortable" data-key="name">Name <span class="dir" id="dir-name"></span></th>
       <th class="sortable" data-key="assigned" style="width:200px;">Assigned to <span class="dir" id="dir-assigned"></span></th>
       <th class="sortable" data-key="status" style="width:160px;">Status <span class="dir" id="dir-status"></span></th>

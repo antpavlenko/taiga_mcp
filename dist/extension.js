@@ -403,11 +403,11 @@ function renderHtml(csp, nonce, opts) {
     if (opts.mode === "edit") {
       const idPart = String(story?.ref || story?.id || "");
       if (base) {
-        url = slug ? `${base}/project/${encodeURIComponent(slug)}/userstory/${idPart}` : `${base}/userstory/${idPart}`;
+        url = slug ? `${base}/project/${encodeURIComponent(slug)}/us/${idPart}` : `${base}/us/${idPart}`;
       }
     } else {
       if (base) {
-        url = slug ? `${base}/project/${encodeURIComponent(slug)}/userstories` : `${base}/userstories`;
+        url = slug ? `${base}/project/${encodeURIComponent(slug)}/us` : `${base}/us`;
       }
     }
     const linkHtml = url ? ` (<a href="${url}" target="_blank">${escapeHtml2(url)}</a>)` : "";
@@ -428,7 +428,7 @@ function renderHtml(csp, nonce, opts) {
   </div>
   <table class="list">
     <thead><tr>
-      <th class="sortable" data-key="id" style="width:90px;">ID <span class="dir" id="dir2-id"></span></th>
+      <th class="sortable" data-key="id" style="width:90px;">Ref <span class="dir" id="dir2-id"></span></th>
       <th class="sortable" data-key="name">Name <span class="dir" id="dir2-name"></span></th>
       <th class="sortable" data-key="assigned" style="width:200px;">Assigned to <span class="dir" id="dir2-assigned"></span></th>
       <th class="sortable" data-key="status" style="width:160px;">Status <span class="dir" id="dir2-status"></span></th>
@@ -1624,25 +1624,25 @@ var TaigaApiClient = class {
     this.log = log;
     this.fetchFn = fetchImpl || globalThis.fetch;
   }
-  async get(path, opts = {}) {
-    return this.request("GET", path, void 0, { headers: opts.headers }, opts.query);
+  async get(path2, opts = {}) {
+    return this.request("GET", path2, void 0, { headers: opts.headers }, opts.query);
   }
-  async post(path, body, opts = {}) {
-    return this.request("POST", path, body, opts);
+  async post(path2, body, opts = {}) {
+    return this.request("POST", path2, body, opts);
   }
-  async patch(path, body, opts = {}) {
-    return this.request("PATCH", path, body, opts);
+  async patch(path2, body, opts = {}) {
+    return this.request("PATCH", path2, body, opts);
   }
-  async delete(path, opts = {}) {
-    return this.request("DELETE", path, void 0, opts);
+  async delete(path2, opts = {}) {
+    return this.request("DELETE", path2, void 0, opts);
   }
-  async request(method, path, body, opts = {}, query) {
+  async request(method, path2, body, opts = {}, query) {
     if (!this.baseUrl) {
-      this.log?.(`[TaigaApi] No baseUrl configured; skipping ${method} ${path}`);
+      this.log?.(`[TaigaApi] No baseUrl configured; skipping ${method} ${path2}`);
       return { status: 0, headers: {}, error: translate(0, null, new Error("No Taiga baseUrl configured")) };
     }
     const token = await this.tokenProvider();
-    const url = this.buildUrl(path, query);
+    const url = this.buildUrl(path2, query);
     const headers = { Accept: "application/json", ...opts.headers || {} };
     let bodyStr = void 0;
     if (body !== void 0) {
@@ -1678,7 +1678,7 @@ var TaigaApiClient = class {
       if (method === "GET") {
         const preview = this.previewData(data);
         if (preview)
-          this.log?.(`[TaigaApi] preview ${path}: ${preview}`);
+          this.log?.(`[TaigaApi] preview ${path2}: ${preview}`);
       }
     } catch {
     }
@@ -1712,8 +1712,8 @@ var TaigaApiClient = class {
       return void 0;
     }
   }
-  buildUrl(path, query) {
-    const base = `${this.baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  buildUrl(path2, query) {
+    const base = `${this.baseUrl.replace(/\/$/, "")}/${path2.replace(/^\//, "")}`;
     if (!query)
       return base;
     const params = Object.entries(query).filter(([, v]) => v !== void 0 && v !== null).flatMap(([k, v]) => Array.isArray(v) ? v.map((x) => [k, x]) : [[k, v]]);
@@ -3201,7 +3201,7 @@ function renderHtml2(csp, nonce, opts) {
   </div>
   <table class="list">
     <thead><tr>
-      <th class="sortable" data-key="id" style="width:90px;">ID <span class="dir" id="dir-id"></span></th>
+      <th class="sortable" data-key="id" style="width:90px;">Ref <span class="dir" id="dir-id"></span></th>
       <th class="sortable" data-key="name">Name <span class="dir" id="dir-name"></span></th>
       <th class="sortable" data-key="assigned" style="width:200px;">Assigned to <span class="dir" id="dir-assigned"></span></th>
       <th class="sortable" data-key="status" style="width:160px;">Status <span class="dir" id="dir-status"></span></th>
@@ -3516,7 +3516,11 @@ function getNonce4() {
 }
 
 // src/extension.ts
+var path = __toESM(require("path"));
+var fs = __toESM(require("fs"));
+var os = __toESM(require("os"));
 var activeProject;
+var mcpDidChangeEmitter;
 async function activate(context) {
   const configMgr = new ConfigurationManager();
   const currentCfg = configMgr.getEffective();
@@ -3588,6 +3592,10 @@ async function activate(context) {
       sprintsTree.setActiveProject(project?.id);
       storiesTree.setActiveProject(project?.id);
       issuesTree.setActiveProject(project?.id);
+      try {
+        mcpDidChangeEmitter?.fire();
+      } catch {
+      }
     },
     getActiveProject() {
       return activeProject;
@@ -3675,6 +3683,94 @@ async function activate(context) {
       }
     }));
   })();
+  try {
+    const lm2 = vscode15.lm;
+    const McpStdioServerDefinition2 = vscode15.McpStdioServerDefinition;
+    if (lm2 && typeof lm2.registerMcpServerDefinitionProvider === "function" && McpStdioServerDefinition2) {
+      const didChange = new vscode15.EventEmitter();
+      mcpDidChangeEmitter = didChange;
+      const buildDefinition = async () => {
+        const configuredMcp = vscode15.workspace.getConfiguration().get("taigaMcp.baseUrl") ?? "";
+        const normalizeBase = (u) => (u || "").replace(/\/+$/, "").replace(/\/(api)(\/v\d+)?$/i, "");
+        let fallback = "";
+        try {
+          fallback = new ConfigurationManager().getEffective().baseUrl || "";
+        } catch {
+        }
+        const baseUrl = normalizeBase(configuredMcp || fallback || "");
+        let token = await context.secrets.get("taigaMcp.token");
+        if (!token) {
+          try {
+            const cfgMgr = new ConfigurationManager();
+            const secretId = cfgMgr.getEffective().tokenSecretId;
+            const am = new AuthManager(context);
+            token = await am.getToken(secretId);
+          } catch {
+          }
+        }
+        const projectId = activeProject?.id ? String(activeProject.id) : "";
+        const serverPath = vscode15.Uri.file(path.join(context.extensionPath, "dist", "mcp", "server.js"));
+        const McpStdioServerDefinition3 = vscode15.McpStdioServerDefinition;
+        const version = `1.1.3${projectId ? `#p${projectId}` : ""}#t${Date.now()}`;
+        let cfgFile = "";
+        try {
+          const tmpDir = path.join(os.tmpdir(), "taiga-mcp");
+          fs.mkdirSync(tmpDir, { recursive: true });
+          cfgFile = path.join(tmpDir, `cfg-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+          const filePayload = { baseUrl, token, projectId };
+          fs.writeFileSync(cfgFile, JSON.stringify(filePayload), { encoding: "utf8" });
+        } catch {
+        }
+        const args = [serverPath.fsPath, "--base", baseUrl || "", "--project", projectId || ""];
+        if (cfgFile)
+          args.push("--config", cfgFile);
+        const debug = !!vscode15.workspace.getConfiguration().get("taigaMcp.debug");
+        const env = { TAIGA_BASE_URL: baseUrl, TAIGA_TOKEN: token || "", TAIGA_PROJECT_ID: projectId };
+        if (debug)
+          env.TAIGA_MCP_DEBUG = "1";
+        try {
+          logger.info(`Taiga MCP def built (base=${baseUrl ? "set" : "missing"}, token=${token ? "set" : "missing"}, project=${projectId || "none"})`);
+          if (debug)
+            logger.info(`Taiga MCP args: ${args.join(" ")}`);
+        } catch {
+        }
+        return new McpStdioServerDefinition3("Taiga MCP", process.execPath, args, env, version);
+      };
+      context.subscriptions.push(
+        lm2.registerMcpServerDefinitionProvider("taigaMcpProvider", {
+          onDidChangeMcpServerDefinitions: didChange.event,
+          provideMcpServerDefinitions: async () => {
+            const def = await buildDefinition();
+            try {
+              logger.info(`Registered Taiga MCP provider definition (bin=${process.execPath})`);
+            } catch {
+            }
+            return [def];
+          },
+          resolveMcpServerDefinition: async (_server) => {
+            return await buildDefinition();
+          }
+        })
+      );
+      try {
+        didChange.fire();
+      } catch {
+      }
+      try {
+        const chatCfg = vscode15.workspace.getConfiguration("chat");
+        const access = chatCfg && chatCfg.get?.("mcp.access");
+        if (String(access).toLowerCase() === "none") {
+          vscode15.window.showWarningMessage("VS Code Chat MCP access is disabled (chat.mcp.access = none). Enable it to use Taiga MCP tools.");
+        }
+      } catch {
+      }
+    }
+  } catch (e) {
+    try {
+      logger.info("MCP API not available in this VS Code build; Taiga MCP tools will be unavailable.");
+    } catch {
+    }
+  }
   (function setupIssueDoubleClickCommand() {
     let lastById = /* @__PURE__ */ new Map();
     context.subscriptions.push(vscode15.commands.registerCommand("taiga._openIssueOnDoubleClick", async (arg) => {
@@ -3697,6 +3793,13 @@ async function activate(context) {
     }));
   })();
   context.subscriptions.push(
+    // Hidden focus commands to prevent default palette clutter
+    vscode15.commands.registerCommand("taiga.focusContainer", () => vscode15.commands.executeCommand("workbench.view.extension.taiga")),
+    vscode15.commands.registerCommand("taiga.focusControls", () => vscode15.commands.executeCommand("workbench.view.extension.taigaControls")),
+    vscode15.commands.registerCommand("taiga.focusEpics", () => vscode15.commands.executeCommand("workbench.view.extension.taigaEpics")),
+    vscode15.commands.registerCommand("taiga.focusSprints", () => vscode15.commands.executeCommand("workbench.view.extension.taigaSprints")),
+    vscode15.commands.registerCommand("taiga.focusUserStories", () => vscode15.commands.executeCommand("workbench.view.extension.taigaUserStories")),
+    vscode15.commands.registerCommand("taiga.focusIssues", () => vscode15.commands.executeCommand("workbench.view.extension.taigaIssues")),
     vscode15.commands.registerCommand("taiga.createEpic", async () => {
       if (!activeProject) {
         vscode15.window.showWarningMessage("Select a project first");
@@ -3999,6 +4102,52 @@ async function activate(context) {
           issuesTree.refresh();
         }
       }
+    }),
+    // Debugging helpers for MCP
+    vscode15.commands.registerCommand("taiga.restartMcpServer", async () => {
+      try {
+        mcpDidChangeEmitter?.fire();
+        vscode15.window.showInformationMessage("Taiga MCP: definitions refreshed. Use MCP: List Servers \u2192 Refresh.");
+      } catch (e) {
+        vscode15.window.showErrorMessage(`Taiga MCP restart failed: ${e.message}`);
+      }
+    }),
+    vscode15.commands.registerCommand("taiga.showMcpEnvDebug", async () => {
+      const cfgMgr = new ConfigurationManager();
+      const configuredMcp = vscode15.workspace.getConfiguration().get("taigaMcp.baseUrl") ?? "";
+      const normalizeBase = (u) => (u || "").replace(/\/+$/, "").replace(/\/(api)(\/v\d+)?$/i, "");
+      let fallback = "";
+      try {
+        fallback = cfgMgr.getEffective().baseUrl || "";
+      } catch {
+      }
+      const baseUrl = normalizeBase(configuredMcp || fallback || "");
+      let token = await context.secrets.get("taigaMcp.token");
+      if (!token) {
+        try {
+          token = await new AuthManager(context).getToken(cfgMgr.getEffective().tokenSecretId);
+        } catch {
+        }
+      }
+      const projectId = activeProject?.id ? String(activeProject.id) : "";
+      const serverPath = vscode15.Uri.file(path.join(context.extensionPath, "dist", "mcp", "server.js"));
+      const args = [serverPath.fsPath, "--base", baseUrl || "", "--project", projectId || ""];
+      const msg = `MCP Debug
+base: ${baseUrl || "MISSING"}
+token: ${token ? "set" : "MISSING"}
+project: ${projectId || "none"}
+args: ${args.join(" ")}`;
+      vscode15.window.showInformationMessage(msg, { modal: true });
+    }),
+    vscode15.commands.registerCommand("taiga.openMcpServerDebugFile", async () => {
+      try {
+        const tmp = path.join(os.tmpdir(), "taiga-mcp", "last-start.json");
+        const uri = vscode15.Uri.file(tmp);
+        const doc = await vscode15.workspace.openTextDocument(uri);
+        await vscode15.window.showTextDocument(doc, { preview: false });
+      } catch (e) {
+        vscode15.window.showErrorMessage(`Unable to open MCP debug file: ${e.message}`);
+      }
     })
   );
   const saved = context.globalState.get("taiga.activeProject");
@@ -4033,7 +4182,19 @@ async function activate(context) {
     sprintsTree.refresh();
     storiesTree.refresh();
     issuesTree.refresh();
+    try {
+      mcpDidChangeEmitter?.fire();
+    } catch {
+    }
   });
+  context.subscriptions.push(vscode15.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration("taigaMcp.baseUrl")) {
+      try {
+        mcpDidChangeEmitter?.fire();
+      } catch {
+      }
+    }
+  }));
   vscode15.commands.registerCommand("taiga.toggleShowClosedIssues", async () => {
     const next = !issuesTree.getIncludeClosed();
     issuesTree.setIncludeClosed(next);
